@@ -87,6 +87,12 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
+          salut
+
+          <div className="w-24 h-24 bg-red-500">
+
+SALUT
+          </div>
           <Image
             aria-hidden
             src="/globe.svg"
