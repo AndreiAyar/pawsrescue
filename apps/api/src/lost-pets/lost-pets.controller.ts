@@ -15,7 +15,6 @@ export class LostPetsController {
   constructor(private lostPetsService: LostPetsService) {}
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number): LostPet[] {
-    console.log('id', id);
     return this.lostPetsService.findAll();
   }
 
