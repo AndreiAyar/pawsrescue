@@ -1,15 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { LostPet } from './interfaces/lostPet.interface';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { LostPetEntity } from './lost-pets.entity';
+import { EntityRepository } from '@mikro-orm/core';
+import { LostPetDTO } from './dtos/lost-pet.dto';
+import { EntityManager } from '@mikro-orm/postgresql';
 
 @Injectable()
 export class LostPetsService {
-  private readonly pets: LostPet[] = [];
+  constructor(
+    @InjectRepository(LostPetEntity)
+    private readonly lostPetsRepository: EntityRepository<LostPetEntity>,
+    private readonly em: EntityManager,
+  ) {}
 
-  create(pet: LostPet) {
-    this.pets.push(pet);
+  async create(pet: LostPetDTO) {
+    const createdPet = this.lostPetsRepository.create({
+      name: pet.name,
+      location: pet.location,
+    });
+    await this.em.persistAndFlush(createdPet);
+    return createdPet;
   }
 
-  findAll(): LostPet[] {
-    return this.pets;
+  findAll(): string {
+    return 'sa;';
   }
 }

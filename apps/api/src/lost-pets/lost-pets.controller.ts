@@ -14,7 +14,8 @@ import { LostPet } from './interfaces/lostPet.interface';
 export class LostPetsController {
   constructor(private lostPetsService: LostPetsService) {}
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number): LostPet[] {
+  findOne(@Param('id', ParseIntPipe) id: number): any {
+    console.log('process',process.env.DB_HOST)
     return this.lostPetsService.findAll();
   }
 
