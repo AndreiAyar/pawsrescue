@@ -11,7 +11,7 @@ import { ConfigModule } from '@nestjs/config';
     MikroOrmModule.forRoot(db_config),
     ConfigModule.forRoot({
       envFilePath: ['.env.development.local', '.env.development'],
-      isGlobal: true,
+      // isGlobal: true,
     }),
     LostPetsModule,
   ],

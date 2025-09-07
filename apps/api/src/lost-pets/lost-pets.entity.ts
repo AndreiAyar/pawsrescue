@@ -1,7 +1,15 @@
-import { Entity, PrimaryKey, Property, EntityRepositoryType } from '@mikro-orm/core';
+import {
+  Entity,
+  PrimaryKey,
+  Property,
+  EntityRepositoryType,
+} from '@mikro-orm/core';
 import { LostPetsRepository } from './lost-pets.repository';
 
-@Entity({ repository: () => LostPetsRepository })
+@Entity({
+  tableName: 'lost_pets',
+  repository: () => LostPetsRepository,
+})
 export class LostPetEntity {
   [EntityRepositoryType]?: LostPetsRepository;
 
@@ -13,4 +21,19 @@ export class LostPetEntity {
 
   @Property()
   location!: string;
+
+  @Property({ nullable: true })
+  city?: string;
+
+  @Property({ nullable: true })
+  lat?: number;
+
+  @Property({ nullable: true })
+  lon?: number;
+
+  @Property({ type: 'datetime', onCreate: () => new Date(), nullable: true })
+  createdAt?: Date;
+
+  @Property({ type: 'datetime', onUpdate: () => new Date(), nullable: true })
+  updatedAt?: Date;
 }
