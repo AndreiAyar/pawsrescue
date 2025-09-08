@@ -35,24 +35,6 @@
           "length": 255,
           "mappedType": "string"
         },
-        "lat": {
-          "name": "lat",
-          "type": "int",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "integer"
-        },
-        "lon": {
-          "name": "lon",
-          "type": "int",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "integer"
-        },
         "city": {
           "name": "city",
           "type": "varchar(255)",
@@ -62,6 +44,28 @@
           "nullable": true,
           "length": 255,
           "mappedType": "string"
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "numeric(10,8)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "precision": 10,
+          "scale": 8,
+          "mappedType": "decimal"
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "numeric(11,8)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "precision": 11,
+          "scale": 8,
+          "mappedType": "decimal"
         },
         "created_at": {
           "name": "created_at",
@@ -87,6 +91,26 @@
       "name": "lost_pets",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "latitude"
+          ],
+          "composite": false,
+          "keyName": "lost_pets_latitude_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "longitude"
+          ],
+          "composite": false,
+          "keyName": "lost_pets_longitude_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
         {
           "keyName": "lost_pets_pkey",
           "columnNames": [

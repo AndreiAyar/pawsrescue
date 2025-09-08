@@ -3,6 +3,7 @@ import {
   PrimaryKey,
   Property,
   EntityRepositoryType,
+  Index,
 } from '@mikro-orm/core';
 import { LostPetsRepository } from './lost-pets.repository';
 
@@ -25,11 +26,14 @@ export class LostPetEntity {
   @Property({ nullable: true })
   city?: string;
 
-  @Property({ nullable: true })
-  lat?: number;
+  // Coordinates (from MapBox or user selection)
+  @Property({ type: 'decimal', precision: 10, scale: 8, nullable: true })
+  @Index()
+  latitude?: number;
 
-  @Property({ nullable: true })
-  lon?: number;
+  @Property({ type: 'decimal', precision: 11, scale: 8, nullable: true })
+  @Index()
+  longitude?: number;
 
   @Property({ type: 'datetime', onCreate: () => new Date(), nullable: true })
   createdAt?: Date;
