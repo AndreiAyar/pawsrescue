@@ -45,6 +45,16 @@
           "length": 255,
           "mappedType": "string"
         },
+        "country": {
+          "name": "country",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 255,
+          "mappedType": "string"
+        },
         "latitude": {
           "name": "latitude",
           "type": "numeric(10,8)",
@@ -91,6 +101,16 @@
       "name": "lost_pets",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "country"
+          ],
+          "composite": false,
+          "keyName": "lost_pets_country_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
         {
           "columnNames": [
             "latitude"
