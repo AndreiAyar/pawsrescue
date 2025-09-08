@@ -26,9 +26,9 @@ export class LostPetEntity {
   @Property({ nullable: true })
   city?: string;
 
-  @Property({nullable:true})
+  @Property({ nullable: true })
   @Index()
-  country?: string
+  country?: string;
 
   // Coordinates (from MapBox or user selection)
   @Property({ type: 'decimal', precision: 10, scale: 8, nullable: true })
