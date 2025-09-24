@@ -1,4 +1,4 @@
-Fullstack app for finding pets. 🐈
+Fullstack app for finding pets with the help of AI. 🐈
 
 # Turborepo starter
 
