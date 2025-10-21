@@ -26,7 +26,7 @@ export default async function Home() {
         <div>Incepe!</div>
       </Button>
       <Button interactive={false} href="/lost-pet" buttonType={"secondary"}>
-        <div>Am vazut o pisica</div>
+        <div>Detalii</div>
       </Button>
       `<pre>{JSON.stringify(cats, null, 2)}</pre>
       <Map />
