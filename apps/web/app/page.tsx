@@ -25,7 +25,7 @@ export default async function Home() {
       <Button interactive={false} buttonType={"main"}>
         <div>Incepe!</div>
       </Button>
-      <Button interactive={false} href="https://google.ro" buttonType={"secondary"}>
+      <Button interactive={false} href="/lost-pet" buttonType={"secondary"}>
         <div>Am vazut o pisica</div>
       </Button>
       `<pre>{JSON.stringify(cats, null, 2)}</pre>
