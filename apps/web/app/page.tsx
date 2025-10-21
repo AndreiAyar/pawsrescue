@@ -14,9 +14,21 @@ export default async function Home() {
   return (
     <div>
       <div className="w-[300px] h-[300px] bg-red-500">SALU!T</div>
-      <Button appName="sal"><div>da</div></Button>
-      <pre>{JSON.stringify(cats, null, 2)}</pre>
-
+      Interactive below
+      <Button buttonType={"main"}>
+        <div>Incepe!</div>
+      </Button>
+      <Button buttonType={"secondary"}>
+        <div>Am vazut o pisica</div>
+      </Button>
+      -----
+      <Button interactive={false} buttonType={"main"}>
+        <div>Incepe!</div>
+      </Button>
+      <Button interactive={false} href="https://google.ro" buttonType={"secondary"}>
+        <div>Am vazut o pisica</div>
+      </Button>
+      `<pre>{JSON.stringify(cats, null, 2)}</pre>
       <Map />
     </div>
   );
