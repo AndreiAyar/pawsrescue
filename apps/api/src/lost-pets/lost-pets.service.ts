@@ -14,15 +14,15 @@ export class LostPetsService {
   ) {}
 
   async create(pet: LostPetDTO) {
-    const createdPet = this.lostPetsRepository.create({
-      name: pet.name,
-      location: pet.location,
-    });
-    await this.em.persistAndFlush(createdPet);
-    return createdPet;
+    // const createdPet = this.lostPetsRepository.create({
+    //   name: pet.name,
+    //   location: pet.location,
+    // });
+    // await this.em.persistAndFlush(createdPet);
+    // return createdPet;
   }
 
-  findAll(): string {
-    return 'sa;';
+  async findAll(): Promise<LostPetEntity[]> {
+    return await this.lostPetsRepository.findAll();
   }
 }

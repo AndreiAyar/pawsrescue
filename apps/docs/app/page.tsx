@@ -93,6 +93,8 @@ export default function Home() {
 
 SALUT
           </div>
+
+   
           <Image
             aria-hidden
             src="/globe.svg"
