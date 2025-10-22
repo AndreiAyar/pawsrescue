@@ -1,5 +1,12 @@
+"use client";
 import Map from "./components/Map/Map";
 import { Button } from "@repo/ui/button";
+import { Input } from "@repo/ui/input";
+import { SubmitHandler, useForm } from "react-hook-form";
+
+interface IFormInput {
+  name: string;
+}
 
 async function getCats() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -9,8 +16,11 @@ async function getCats() {
   return res.json();
 }
 
-export default async function Home() {
-  const cats = await getCats();
+export default function Home() {
+  //const cats = await getCats();
+  const { register, handleSubmit } = useForm<IFormInput>();
+  const onSubmit: SubmitHandler<IFormInput> = (data) => console.log(data);
+
   return (
     <div>
       <div className="w-[300px] h-[300px] bg-red-500">SALU!T</div>
@@ -28,7 +38,14 @@ export default async function Home() {
       <Button interactive={false} href="/lost-pet" buttonType={"secondary"}>
         <div>Detalii</div>
       </Button>
-      `<pre>{JSON.stringify(cats, null, 2)}</pre>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Input
+          className="bg-red-500"
+          {...register("name", { required: true, maxLength: 20 })}
+        />
+        `
+      </form>
+      {/* <pre>{JSON.stringify(cats, null, 2)}</pre> */}
       <Map />
     </div>
   );
