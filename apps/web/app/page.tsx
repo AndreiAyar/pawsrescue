@@ -8,13 +8,13 @@ interface IFormInput {
   name: string;
 }
 
-async function getCats() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+// async function getCats() {
+//   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  const res = await fetch(`${apiUrl}/lost-pets/2`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to fetch cats");
-  return res.json();
-}
+//   const res = await fetch(`${apiUrl}/lost-pets/2`, { cache: "no-store" });
+//   if (!res.ok) throw new Error("Failed to fetch cats");
+//   return res.json();
+// }
 
 export default function Home() {
   //const cats = await getCats();
