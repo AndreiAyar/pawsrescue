@@ -9,10 +9,21 @@ interface FileUploadProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
   showPreview?: boolean;
 }
 
+// Only allow common photo formats
+const ALLOWED_PHOTO_TYPES = [
+  'image/jpeg',
+  'image/jpg', 
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/heic',
+  'image/heif'
+];
+
 export function FileUpload({ 
   className, 
   maxFiles = 5, 
-  accept = "image/*", 
+  accept = "image/jpeg,image/jpg,image/png,image/gif,image/webp,image/heic,image/heif", 
   onChange,
   showPreview = true,
   ...props 
@@ -20,10 +31,16 @@ export function FileUpload({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
 
+  const isValidPhotoType = (file: File): boolean => {
+    return ALLOWED_PHOTO_TYPES.includes(file.type.toLowerCase());
+  };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      const fileArray = Array.from(files).slice(0, maxFiles);
+      const fileArray = Array.from(files)
+        .filter(file => isValidPhotoType(file))
+        .slice(0, maxFiles);
       setSelectedFiles(fileArray);
       onChange?.(files);
     }
@@ -45,7 +62,9 @@ export function FileUpload({
     
     const files = event.dataTransfer.files;
     if (files) {
-      const fileArray = Array.from(files).slice(0, maxFiles);
+      const fileArray = Array.from(files)
+        .filter(file => isValidPhotoType(file))
+        .slice(0, maxFiles);
       setSelectedFiles(fileArray);
       onChange?.(files);
     }
@@ -106,7 +125,7 @@ export function FileUpload({
             <span className="font-medium">Click to upload</span> or drag and drop
           </p>
           <p className="text-xs text-gray-500">
-            PNG, JPG, GIF up to {maxFiles} files
+            Only photos (JPG, PNG, GIF, WebP, HEIC) up to {maxFiles} files
           </p>
         </div>
       </div>
@@ -121,19 +140,11 @@ export function FileUpload({
             {selectedFiles.map((file, index) => (
               <div key={index} className="relative group">
                 <div className="aspect-square rounded-lg overflow-hidden border border-gray-200">
-                  {file.type.startsWith('image/') ? (
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0v12h8V4H6z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Photo ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 
                 {/* Remove button */}
