@@ -3,14 +3,15 @@ import { ReactNode } from "react";
 
 interface FormFieldProps {
   label: string;
+  name:string;
   error?: string;
   children: ReactNode;
 }
 
-export const FormField = ({ label, error, children }: FormFieldProps) => {
+export const FormField = ({ label, name, error, children }: FormFieldProps) => {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
       {children}
