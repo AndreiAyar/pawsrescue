@@ -2,10 +2,11 @@
 import Map from "./components/Map/Map";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
+import { FormField } from "@repo/ui/formField";
 import { SubmitHandler, useForm } from "react-hook-form";
 
 interface IFormInput {
-  name: string;
+  catName: string;
 }
 
 // async function getCats() {
@@ -39,11 +40,13 @@ export default function Home() {
         <div>Detalii</div>
       </Button>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Input
-          className="bg-red-500"
-          {...register("name", { required: true, maxLength: 20 })}
-        />
-        `
+
+        <FormField label="catName" error="Eroare la nume">
+          <Input
+            className="bg-red-500"
+            {...register("catName", { required: true, maxLength: 20 })}
+          />
+        </FormField>
       </form>
       {/* <pre>{JSON.stringify(cats, null, 2)}</pre> */}
       <Map />
