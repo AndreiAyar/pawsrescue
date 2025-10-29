@@ -178,12 +178,12 @@ export const FileUpload = ({
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {selectedFiles.map((file, index) => (
-              <div key={index} className="relative group">
+              <div key={index} className="relative group w-16 h-16">
                 <div className="aspect-square rounded-lg overflow-hidden border border-gray-200">
                   <img
-                    src={URL.createObjectURL(file)}
-                    alt={`Photo ${index + 1}`}
-                    className="w-full h-full object-cover"
+                  src={URL.createObjectURL(file)}
+                  alt={`Photo ${index + 1}`}
+                  className="w-full h-full object-cover"
                   />
                 </div>
 
