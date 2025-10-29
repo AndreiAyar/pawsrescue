@@ -10,6 +10,9 @@ import { SubmitHandler, useForm } from "react-hook-form";
 
 interface IFormInput {
   catName: string;
+  city: string;
+  isLost: boolean;
+  photos: FileList;
 }
 
 // async function getCats() {
@@ -43,17 +46,19 @@ export default function Home() {
         <div>Detalii</div>
       </Button>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <FormField label="Cat name" name="catName" error="Eroare la nume">
+        <FormField label="Cat name" name="catName">
           <Input
             id="catName"
-            {...register("catName", { required: true, maxLength: 20 })}
+            {...register("catName", { required: "Cat name is required", maxLength: 20 })}
           />
         </FormField>
 
         <FormField label="City" name="city">
           <Select
-            name="city"
+            id="city"
+            {...register("city", { required: "Please select a city" })}
             options={[
+              { value: "", label: "Select a city" },
               { value: "nyc", label: "New York" },
               { value: "la", label: "Los Angeles" },
             ]}
@@ -61,16 +66,24 @@ export default function Home() {
           />
         </FormField>
 
-        <Checkbox name="isLost" label="This pet is currently lost" />
+        <Checkbox 
+          id="isLost"
+          {...register("isLost")}
+          label="This pet is currently lost" 
+        />
 
         <FormField label="Pet Photos" name="photos">
           <FileUpload
-            name="photos"
+            id="photos"
+         
             maxFiles={5}
-            accept="image/*"
             onChange={(files: FileList | null) => console.log("Files selected:", files)}
           />
         </FormField>
+
+        <Button buttonType="main" type="submit">
+          Submit Pet Info
+        </Button>
       </form>
       {/* <pre>{JSON.stringify(cats, null, 2)}</pre> */}
       <Map />

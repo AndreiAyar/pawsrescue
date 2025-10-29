@@ -20,12 +20,14 @@ interface ButtonProps {
   buttonType: "main" | "secondary";
   onClick?: () => void;
   interactive?: boolean;
+  type?: "button" | "submit" | "reset";
   href?: string;
 }
 
 export const Button = ({
   children,
   buttonType,
+  type="button",
   onClick,
   interactive = true,
   href,
@@ -37,7 +39,7 @@ export const Button = ({
   if (interactive) {
     return (
       <button
-        type="button"
+        type={type}
         className={baseDivClass}
         onClick={onClick}
       >

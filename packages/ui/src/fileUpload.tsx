@@ -1,5 +1,5 @@
 'use client';
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface FileUploadProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   className?: string;
@@ -7,6 +7,9 @@ interface FileUploadProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
   accept?: string;
   onChange?: (files: FileList | null) => void;
   showPreview?: boolean;
+  // React Hook Form support
+  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
+  ref?: React.Ref<HTMLInputElement>;
 }
 
 // Only allow common photo formats
@@ -25,11 +28,13 @@ export function FileUpload({
   maxFiles = 5, 
   accept = "image/jpeg,image/jpg,image/png,image/gif,image/webp,image/heic,image/heif", 
   onChange,
+  onBlur,
   showPreview = true,
   ...props 
 }: FileUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isValidPhotoType = (file: File): boolean => {
     return ALLOWED_PHOTO_TYPES.includes(file.type.toLowerCase());
@@ -95,14 +100,15 @@ export function FileUpload({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => document.getElementById('fileInput')?.click()}
+        onClick={() => fileInputRef.current?.click()}
       >
         <input
-          id="fileInput"
+          ref={fileInputRef}
           type="file"
           multiple
           accept={accept}
           onChange={handleFileChange}
+        //  onBlur={onBlur}
           className="hidden"
           {...props}
         />
@@ -170,4 +176,4 @@ export function FileUpload({
       )}
     </div>
   );
-}
+}   
