@@ -1,42 +1,43 @@
-'use client';
-import { useState, useRef, forwardRef } from "react";
+"use client";
+import { useState, useRef, useImperativeHandle } from "react";
 
-interface FileUploadProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+interface FileUploadProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
   className?: string;
   maxFiles?: number;
   accept?: string;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  showPreview?: boolean;  
+  showPreview?: boolean;
   // React Hook Form support
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 // Only allow common photo formats
 const ALLOWED_PHOTO_TYPES = [
-  'image/jpeg',
-  'image/jpg', 
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/heic',
-  'image/heif'
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/heic",
+  "image/heif",
 ];
 
-export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({ 
-  className, 
-  maxFiles = 5, 
-  accept = "image/jpeg,image/jpg,image/png,image/gif,image/webp,image/heic,image/heif", 
+export const FileUpload = ({
+  className,
+  maxFiles = 5,
+  accept = "image/jpeg,image/jpg,image/png,image/gif,image/webp,image/heic,image/heif",
   onChange,
   onBlur,
   showPreview = true,
-  ...props 
-}, forwardedRef) => {
+  ...props
+}: FileUploadProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const internalRef = useRef<HTMLInputElement>(null);
-  
+
   // Use forwarded ref from RHF if available, otherwise internal ref
-  const fileInputRef = forwardedRef || internalRef;
+  const fileInputRef = internalRef;
 
   const isValidPhotoType = (file: File): boolean => {
     return ALLOWED_PHOTO_TYPES.includes(file.type.toLowerCase());
@@ -46,21 +47,25 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
     const files = event.target.files;
     if (files) {
       const fileArray = Array.from(files)
-        .filter(file => isValidPhotoType(file))
+        .filter((file) => isValidPhotoType(file))
         .slice(0, maxFiles);
       setSelectedFiles(fileArray);
-      
+
       // Call onChange with the event (RHF compatible)
       onChange?.(event);
     }
   };
 
+  //@ts-expect-error: Forwarding ref for React Hook Form compatibility
+  useImperativeHandle(props?.ref, () => internalRef.current);
+
   const handleClick = () => {
-    if (typeof fileInputRef === 'function') {
-      // Can't click a function ref
-      return;
-    }
-    fileInputRef?.current?.click();
+    // if (typeof fileInputRef === 'function') {
+    //   // Can't click a function ref
+    //   return;
+    // }
+
+    internalRef?.current?.click();
   };
 
   const handleDragOver = (event: React.DragEvent) => {
@@ -76,22 +81,22 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
     setIsDragOver(false);
-    
+
     const files = event.dataTransfer.files;
     if (files) {
       const fileArray = Array.from(files)
-        .filter(file => isValidPhotoType(file))
+        .filter((file) => isValidPhotoType(file))
         .slice(0, maxFiles);
       setSelectedFiles(fileArray);
-      
+
       // Update the actual input element for RHF
-      if (typeof fileInputRef !== 'function' && fileInputRef?.current) {
+      if (typeof fileInputRef !== "function" && fileInputRef?.current) {
         const dt = new DataTransfer();
-        fileArray.forEach(file => dt.items.add(file));
+        fileArray.forEach((file) => dt.items.add(file));
         fileInputRef.current.files = dt.files;
-        
+
         // Trigger change event for RHF
-        const changeEvent = new Event('change', { bubbles: true });
+        const changeEvent = new Event("change", { bubbles: true });
         fileInputRef.current.dispatchEvent(changeEvent);
       }
     }
@@ -100,15 +105,15 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
   const removeFile = (index: number) => {
     const newFiles = selectedFiles.filter((_, i) => i !== index);
     setSelectedFiles(newFiles);
-    
+
     // Update the actual input element for RHF
-    if (typeof fileInputRef !== 'function' && fileInputRef?.current) {
+    if (typeof fileInputRef !== "function" && fileInputRef?.current) {
       const dt = new DataTransfer();
-      newFiles.forEach(file => dt.items.add(file));
+      newFiles.forEach((file) => dt.items.add(file));
       fileInputRef.current.files = dt.files;
-      
+
       // Trigger change event for RHF
-      const changeEvent = new Event('change', { bubbles: true });
+      const changeEvent = new Event("change", { bubbles: true });
       fileInputRef.current.dispatchEvent(changeEvent);
     }
   };
@@ -120,9 +125,9 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
         className={
           className +
           ` border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-            isDragOver 
-              ? 'border-blue-400 bg-blue-50' 
-              : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+            isDragOver
+              ? "border-blue-400 bg-blue-50"
+              : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
           }`
         }
         onDragOver={handleDragOver}
@@ -131,16 +136,16 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
         onClick={handleClick}
       >
         <input
-          ref={fileInputRef}
+          {...props}
           type="file"
           multiple
           accept={accept}
           onChange={handleFileChange}
           onBlur={onBlur}
           className="hidden"
-          {...props}
+          ref={internalRef}
         />
-        
+
         <div className="flex flex-col items-center">
           <svg
             className="w-8 h-8 text-gray-400 mb-2"
@@ -156,7 +161,8 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
             />
           </svg>
           <p className="text-sm text-gray-600 mb-1">
-            <span className="font-medium">Click to upload</span> or drag and drop
+            <span className="font-medium">Click to upload</span> or drag and
+            drop
           </p>
           <p className="text-xs text-gray-500">
             Only photos (JPG, PNG, GIF, WebP, HEIC) up to {maxFiles} files
@@ -180,7 +186,7 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
                     className="w-full h-full object-cover"
                   />
                 </div>
-                
+
                 {/* Remove button */}
                 <button
                   type="button"
@@ -192,7 +198,7 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
                 >
                   ×
                 </button>
-                
+
                 {/* File name */}
                 <p className="text-xs text-gray-500 mt-1 truncate">
                   {file.name}
@@ -204,6 +210,6 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
       )}
     </div>
   );
-});
+};
 
-FileUpload.displayName = 'FileUpload';   
+FileUpload.displayName = "FileUpload";

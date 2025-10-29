@@ -25,7 +25,11 @@ interface IFormInput {
 
 export default function Home() {
   //const cats = await getCats();
-  const { register, handleSubmit } = useForm<IFormInput>();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<IFormInput>();
   const onSubmit: SubmitHandler<IFormInput> = (data) => console.log(data);
 
   return (
@@ -46,14 +50,29 @@ export default function Home() {
         <div>Detalii</div>
       </Button>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <FormField label="Cat name" name="catName">
+        <FormField label="Cat name" name="catName" error={errors.catName?.message}>
           <Input
             id="catName"
-            {...register("catName", { required: "Cat name is required", maxLength: 20 })}
+            {...register("catName", {
+              required: "Cat name is required",
+              setValueAs: (value: string) => value.trim(),
+              maxLength: {
+              value: 20,
+              message: "Cat name must be at most 20 characters",
+              },
+              minLength: {
+              value: 2,
+              message: "Cat name must be at least 2 characters",
+              },
+              pattern: {
+              value: /^[a-zA-Z0-9 ]+$/,
+              message: "No special characters allowed",
+              },
+            })}
           />
         </FormField>
 
-        <FormField label="City" name="city">
+        <FormField label="City" name="city" error={errors.city?.message}>
           <Select
             id="city"
             {...register("city", { required: "Please select a city" })}
@@ -66,15 +85,18 @@ export default function Home() {
           />
         </FormField>
 
-        <Checkbox 
+        <Checkbox
           id="isLost"
           {...register("isLost")}
-          label="This pet is currently lost" 
+          label="This pet is currently lost"
         />
 
-        <FormField label="Pet Photos" name="photos">
+        <FormField label="Pet Photos" name="photos" error={errors.photos?.message}>
           <FileUpload
-            {...register("photos", { required: "Please upload at least one photo" })}
+            id="photos"
+            {...register("photos", {
+              required: "Please upload at least one photo",
+            })}
             maxFiles={5}
           />
         </FormField>
