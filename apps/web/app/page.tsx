@@ -2,6 +2,9 @@
 import Map from "./components/Map/Map";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
+import { Select } from "@repo/ui/select";
+import { Checkbox } from "@repo/ui/checkbox";
+import { FileUpload } from "@repo/ui/fileUpload";
 import { FormField } from "@repo/ui/formField";
 import { SubmitHandler, useForm } from "react-hook-form";
 
@@ -44,6 +47,28 @@ export default function Home() {
           <Input
             id="catName"
             {...register("catName", { required: true, maxLength: 20 })}
+          />
+        </FormField>
+
+        <FormField label="City" name="city">
+          <Select
+            name="city"
+            options={[
+              { value: "nyc", label: "New York" },
+              { value: "la", label: "Los Angeles" },
+            ]}
+            placeholder="Select a city"
+          />
+        </FormField>
+
+        <Checkbox name="isLost" label="This pet is currently lost" />
+
+        <FormField label="Pet Photos" name="photos">
+          <FileUpload
+            name="photos"
+            maxFiles={5}
+            accept="image/*"
+            onChange={(files: FileList | null) => console.log("Files selected:", files)}
           />
         </FormField>
       </form>
