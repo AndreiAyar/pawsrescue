@@ -1,15 +1,14 @@
 'use client';
-import { useState, useRef } from "react";
+import { useState, useRef, forwardRef } from "react";
 
 interface FileUploadProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   className?: string;
   maxFiles?: number;
   accept?: string;
   onChange?: (files: FileList | null) => void;
-  showPreview?: boolean;
+  showPreview?: boolean;  
   // React Hook Form support
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
-  ref?: React.Ref<HTMLInputElement>;
 }
 
 // Only allow common photo formats
@@ -23,7 +22,7 @@ const ALLOWED_PHOTO_TYPES = [
   'image/heif'
 ];
 
-export function FileUpload({ 
+export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({ 
   className, 
   maxFiles = 5, 
   accept = "image/jpeg,image/jpg,image/png,image/gif,image/webp,image/heic,image/heif", 
@@ -31,10 +30,13 @@ export function FileUpload({
   onBlur,
   showPreview = true,
   ...props 
-}: FileUploadProps) {
+}, ref) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const internalRef = useRef<HTMLInputElement>(null);
+  
+  // Use the forwarded ref if available, otherwise use internal ref
+  const inputRef = ref || internalRef;
 
   const isValidPhotoType = (file: File): boolean => {
     return ALLOWED_PHOTO_TYPES.includes(file.type.toLowerCase());
@@ -100,15 +102,18 @@ export function FileUpload({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => {
+          if (typeof inputRef === 'function') return;
+          inputRef?.current?.click();
+        }}
       >
         <input
-          ref={fileInputRef}
+          ref={inputRef}
           type="file"
           multiple
           accept={accept}
           onChange={handleFileChange}
-        //  onBlur={onBlur}
+          onBlur={onBlur}
           className="hidden"
           {...props}
         />
@@ -176,4 +181,6 @@ export function FileUpload({
       )}
     </div>
   );
-}   
+});
+
+FileUpload.displayName = 'FileUpload';   

@@ -75,7 +75,7 @@ export default function Home() {
         <FormField label="Pet Photos" name="photos">
           <FileUpload
             id="photos"
-         
+            {...register("photos", { required: "Please upload at least one photo" })}
             maxFiles={5}
             onChange={(files: FileList | null) => console.log("Files selected:", files)}
           />
