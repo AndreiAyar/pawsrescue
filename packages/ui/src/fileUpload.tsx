@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, forwardRef } from "react";
+import { useState, useRef } from "react";
 
 interface FileUploadProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   className?: string;
@@ -22,7 +22,7 @@ const ALLOWED_PHOTO_TYPES = [
   'image/heif'
 ];
 
-export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({ 
+export function FileUpload({ 
   className, 
   maxFiles = 5, 
   accept = "image/jpeg,image/jpg,image/png,image/gif,image/webp,image/heic,image/heif", 
@@ -30,13 +30,10 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
   onBlur,
   showPreview = true,
   ...props 
-}, ref) => {
+}: FileUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const internalRef = useRef<HTMLInputElement>(null);
-  
-  // Use the forwarded ref if available, otherwise use internal ref
-  const inputRef = ref || internalRef;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isValidPhotoType = (file: File): boolean => {
     return ALLOWED_PHOTO_TYPES.includes(file.type.toLowerCase());
@@ -102,13 +99,10 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => {
-          if (typeof inputRef === 'function') return;
-          inputRef?.current?.click();
-        }}
+        onClick={() => fileInputRef.current?.click()}
       >
         <input
-          ref={inputRef}
+          ref={fileInputRef}
           type="file"
           multiple
           accept={accept}
@@ -181,6 +175,4 @@ export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({
       )}
     </div>
   );
-});
-
-FileUpload.displayName = 'FileUpload';   
+}   

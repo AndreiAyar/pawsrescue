@@ -25,8 +25,15 @@ interface IFormInput {
 
 export default function Home() {
   //const cats = await getCats();
-  const { register, handleSubmit } = useForm<IFormInput>();
+  const { register, handleSubmit, setValue } = useForm<IFormInput>();
   const onSubmit: SubmitHandler<IFormInput> = (data) => console.log(data);
+  
+  const handleFileChange = (files: FileList | null) => {
+    if (files) {
+      setValue("photos", files);
+      console.log("Files selected:", files);
+    }
+  };
 
   return (
     <div>
@@ -74,10 +81,8 @@ export default function Home() {
 
         <FormField label="Pet Photos" name="photos">
           <FileUpload
-            id="photos"
-            {...register("photos", { required: "Please upload at least one photo" })}
             maxFiles={5}
-            onChange={(files: FileList | null) => console.log("Files selected:", files)}
+            onChange={handleFileChange}
           />
         </FormField>
 
