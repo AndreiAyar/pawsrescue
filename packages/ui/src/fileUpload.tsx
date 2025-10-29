@@ -1,11 +1,11 @@
 'use client';
-import { useState, useRef } from "react";
+import { useState, useRef, forwardRef } from "react";
 
 interface FileUploadProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   className?: string;
   maxFiles?: number;
   accept?: string;
-  onChange?: (files: FileList | null) => void;
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   showPreview?: boolean;  
   // React Hook Form support
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
@@ -22,7 +22,7 @@ const ALLOWED_PHOTO_TYPES = [
   'image/heif'
 ];
 
-export function FileUpload({ 
+export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(({ 
   className, 
   maxFiles = 5, 
   accept = "image/jpeg,image/jpg,image/png,image/gif,image/webp,image/heic,image/heif", 
@@ -30,10 +30,13 @@ export function FileUpload({
   onBlur,
   showPreview = true,
   ...props 
-}: FileUploadProps) {
+}, forwardedRef) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const internalRef = useRef<HTMLInputElement>(null);
+  
+  // Use forwarded ref from RHF if available, otherwise internal ref
+  const fileInputRef = forwardedRef || internalRef;
 
   const isValidPhotoType = (file: File): boolean => {
     return ALLOWED_PHOTO_TYPES.includes(file.type.toLowerCase());
@@ -46,8 +49,18 @@ export function FileUpload({
         .filter(file => isValidPhotoType(file))
         .slice(0, maxFiles);
       setSelectedFiles(fileArray);
-      onChange?.(files);
+      
+      // Call onChange with the event (RHF compatible)
+      onChange?.(event);
     }
+  };
+
+  const handleClick = () => {
+    if (typeof fileInputRef === 'function') {
+      // Can't click a function ref
+      return;
+    }
+    fileInputRef?.current?.click();
   };
 
   const handleDragOver = (event: React.DragEvent) => {
@@ -70,7 +83,17 @@ export function FileUpload({
         .filter(file => isValidPhotoType(file))
         .slice(0, maxFiles);
       setSelectedFiles(fileArray);
-      onChange?.(files);
+      
+      // Update the actual input element for RHF
+      if (typeof fileInputRef !== 'function' && fileInputRef?.current) {
+        const dt = new DataTransfer();
+        fileArray.forEach(file => dt.items.add(file));
+        fileInputRef.current.files = dt.files;
+        
+        // Trigger change event for RHF
+        const changeEvent = new Event('change', { bubbles: true });
+        fileInputRef.current.dispatchEvent(changeEvent);
+      }
     }
   };
 
@@ -78,10 +101,16 @@ export function FileUpload({
     const newFiles = selectedFiles.filter((_, i) => i !== index);
     setSelectedFiles(newFiles);
     
-    // Create new FileList-like object
-    const dt = new DataTransfer();
-    newFiles.forEach(file => dt.items.add(file));
-    onChange?.(dt.files);
+    // Update the actual input element for RHF
+    if (typeof fileInputRef !== 'function' && fileInputRef?.current) {
+      const dt = new DataTransfer();
+      newFiles.forEach(file => dt.items.add(file));
+      fileInputRef.current.files = dt.files;
+      
+      // Trigger change event for RHF
+      const changeEvent = new Event('change', { bubbles: true });
+      fileInputRef.current.dispatchEvent(changeEvent);
+    }
   };
 
   return (
@@ -99,7 +128,7 @@ export function FileUpload({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={handleClick}
       >
         <input
           ref={fileInputRef}
@@ -175,4 +204,6 @@ export function FileUpload({
       )}
     </div>
   );
-}   
+});
+
+FileUpload.displayName = 'FileUpload';   
