@@ -40,10 +40,8 @@ export default function Home() {
         <div>Detalii</div>
       </Button>
       <form onSubmit={handleSubmit(onSubmit)}>
-
         <FormField label="Cat name" name="catName" error="Eroare la nume">
           <Input
-            className="bg-red-500"
             id="catName"
             {...register("catName", { required: true, maxLength: 20 })}
           />
