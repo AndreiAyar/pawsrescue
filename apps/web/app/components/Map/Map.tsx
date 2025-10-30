@@ -40,13 +40,18 @@ export default function Map() {
     markerRef.current = marker;
     // Move marker when map is clicked
     if (map.current) {
-      map.current.on(
-        "click",
-        (e: { lngLat: { lng: number; lat: number } }) => {
-          const { lng, lat } = e.lngLat;
-          markerRef.current?.setLngLat([lng, lat]);
+      map.current.on("click", (e: { lngLat: { lng: number; lat: number } }) => {
+        const { lng, lat } = e.lngLat;
+        markerRef.current?.setLngLat([lng, lat]);
+      });
+
+      map.current.on("move", () => {
+        const lngLat = map.current?.getCenter();
+        if (!lngLat) {
+          return;
         }
-      );
+        markerRef.current?.setLngLat([lngLat.lng, lngLat.lat]);
+      });
     }
 
     return () => {
@@ -66,16 +71,17 @@ export default function Map() {
             mapController={mapController}
             onSelect={(selected) => {
               const feature = selected?.feature;
-              if (feature?.geometry?.type === 'Point' && markerRef.current) {
+              if (feature?.geometry?.type === "Point" && markerRef.current) {
                 const [lng, lat] = feature.geometry.coordinates;
-                if (typeof lng === 'number' && typeof lat === 'number') {
-                  markerRef.current.setLngLat([lng, lat]);
-                  // Optionally center the map on the new location
-                  map.current?.easeTo({
-                    center: [lng, lat],
-                    zoom: 15,
-                    duration: 1000
-                  });
+                if (typeof lng === "number" && typeof lat === "number") {
+                  //Skip for the moment
+                  //   markerRef.current.setLngLat([lng, lat]);
+                  //   // Optionally center the map on the new location
+                  //   map.current?.easeTo({
+                  //     center: [lng, lat],
+                  //     zoom: 15,
+                  //     duration: 1000
+                  //   });
                 }
               }
             }}
