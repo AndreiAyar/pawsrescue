@@ -11,6 +11,8 @@ export default function Map() {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
   >(undefined);
+  const [currentPosition, setCurrentPosition] = useState({ lng: 0, lat: 0 });
+
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<maptilersdk.Marker | null>(null);
   const map = useRef<maptilersdk.Map | null>(null);
@@ -18,6 +20,10 @@ export default function Map() {
   const zoom = 14;
   maptilersdk.config.apiKey = "";
 
+  const updatePosition = (lng: number, lat: number) => {
+    markerRef.current?.setLngLat([lng, lat]);
+    setCurrentPosition({ lng, lat });
+  };
   useEffect(() => {
     if (map.current) return; // stops map from intializing more than once
     if (!mapContainer.current) return; // ensure container is available
@@ -42,7 +48,7 @@ export default function Map() {
     if (map.current) {
       map.current.on("click", (e: { lngLat: { lng: number; lat: number } }) => {
         const { lng, lat } = e.lngLat;
-        markerRef.current?.setLngLat([lng, lat]);
+        updatePosition(lng, lat);
       });
 
       map.current.on("move", () => {
@@ -50,7 +56,8 @@ export default function Map() {
         if (!lngLat) {
           return;
         }
-        markerRef.current?.setLngLat([lngLat.lng, lngLat.lat]);
+
+        updatePosition(lngLat.lng, lngLat.lat);
       });
     }
 
@@ -63,7 +70,7 @@ export default function Map() {
   }, [tokyo.lng, tokyo.lat, zoom]);
 
   return (
-    <div className="relative m-auto w-[calc(100%-100px)] h-[500px]">
+    <div className="relative bg-yellow-500 m-auto w-[calc(100%-100px)] h-[500px] p-20">
       <div className="geocoding absolute top-[10px] left-[10px]">
         {mapController && (
           <GeocodingControl
@@ -88,7 +95,11 @@ export default function Map() {
           />
         )}
       </div>
-      <div ref={mapContainer} className="map absolute h-full w-full" />;
+      <div ref={mapContainer} className="map absolute h-full w-full" />
+      <div className="bg-red-500 text-2xl">
+        <p>Lng{currentPosition.lng}</p>
+        <p>Lng{currentPosition.lat}</p>
+      </div>
     </div>
   );
 }
