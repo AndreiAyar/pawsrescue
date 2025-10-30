@@ -1,9 +1,13 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as maptilersdk from "@maptiler/sdk";
 import "@maptiler/sdk/dist/maptiler-sdk.css";
+import { GeocodingControl } from "@maptiler/geocoding-control/react";
+import { createMapLibreGlMapController } from "@maptiler/geocoding-control/maplibregl-controller";
+import "@maptiler/geocoding-control/style.css";
 
 export default function Map() {
+  const [mapController, setMapController] = useState();
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<maptilersdk.Map | null>(null);
   const tokyo = { lng: 139.753, lat: 35.6844 };
@@ -21,6 +25,8 @@ export default function Map() {
       zoom: zoom,
     });
 
+    setMapController(createMapLibreGlMapController(map.current, maptilersdk));
+
     new maptilersdk.Marker({
       color: "red",
     })
@@ -30,6 +36,14 @@ export default function Map() {
 
   return (
     <div className="relative m-auto w-[calc(100%-100px)] h-[500px]">
+      <div className="geocoding absolute top-[10px] left-[10px]">
+        {mapController && (
+          <GeocodingControl
+            apiKey={maptilersdk.config.apiKey}
+            mapController={mapController}
+          />
+        )}
+      </div>
       <div ref={mapContainer} className="map absolute h-full w-full" />;
     </div>
   );
