@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useRef, useState } from "react";
 import * as maptilersdk from "@maptiler/sdk";
 import "@maptiler/sdk/dist/maptiler-sdk.css";
@@ -7,8 +8,11 @@ import { createMapLibreGlMapController } from "@maptiler/geocoding-control/mapli
 import "@maptiler/geocoding-control/style.css";
 
 export default function Map() {
-  const [mapController, setMapController] = useState();
+  const [mapController, setMapController] = useState<
+    ReturnType<typeof createMapLibreGlMapController> | undefined
+  >(undefined);
   const mapContainer = useRef<HTMLDivElement | null>(null);
+  const markerRef = useRef<maptilersdk.Marker | null>(null);
   const map = useRef<maptilersdk.Map | null>(null);
   const tokyo = { lng: 139.753, lat: 35.6844 };
   const zoom = 14;
@@ -27,11 +31,29 @@ export default function Map() {
 
     setMapController(createMapLibreGlMapController(map.current, maptilersdk));
 
-    new maptilersdk.Marker({
+    const marker = new maptilersdk.Marker({
       color: "red",
     })
       .setLngLat([139.7525, 35.6846])
       .addTo(map.current);
+    markerRef.current = marker;
+    // Move marker when map is clicked
+    if (map.current) {
+      map.current.on(
+        "click",
+        (e: { lngLat: { lng: any; lat: any } }) => {
+          const { lng, lat } = e.lngLat;
+          markerRef.current?.setLngLat([lng, lat]);
+        }
+      );
+    }
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
   }, [tokyo.lng, tokyo.lat, zoom]);
 
   return (
