@@ -29,7 +29,8 @@ export default function Map() {
       zoom: zoom,
     });
 
-    setMapController(createMapLibreGlMapController(map.current, maptilersdk));
+    const controller = createMapLibreGlMapController(map.current, maptilersdk);
+    setMapController(controller);
 
     const marker = new maptilersdk.Marker({
       color: "red",
@@ -41,7 +42,7 @@ export default function Map() {
     if (map.current) {
       map.current.on(
         "click",
-        (e: { lngLat: { lng: any; lat: any } }) => {
+        (e: { lngLat: { lng: number; lat: number } }) => {
           const { lng, lat } = e.lngLat;
           markerRef.current?.setLngLat([lng, lat]);
         }
@@ -63,6 +64,21 @@ export default function Map() {
           <GeocodingControl
             apiKey={maptilersdk.config.apiKey}
             mapController={mapController}
+            onSelect={(selected) => {
+              const feature = selected?.feature;
+              if (feature?.geometry?.type === 'Point' && markerRef.current) {
+                const [lng, lat] = feature.geometry.coordinates;
+                if (typeof lng === 'number' && typeof lat === 'number') {
+                  markerRef.current.setLngLat([lng, lat]);
+                  // Optionally center the map on the new location
+                  map.current?.easeTo({
+                    center: [lng, lat],
+                    zoom: 15,
+                    duration: 1000
+                  });
+                }
+              }
+            }}
           />
         )}
       </div>
