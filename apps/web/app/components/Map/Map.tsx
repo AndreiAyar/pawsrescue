@@ -1,6 +1,8 @@
 "use client";
-import * as maptilersdk from "@maptiler/sdk";
 import { useEffect, useRef } from "react";
+import * as maptilersdk from "@maptiler/sdk";
+import "@maptiler/sdk/dist/maptiler-sdk.css";
+
 export default function Map() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<maptilersdk.Map | null>(null);
@@ -8,23 +10,27 @@ export default function Map() {
   const zoom = 14;
   maptilersdk.config.apiKey = "";
 
-useEffect(() => {
-  if (map.current) return; // stops map from intializing more than once
-  if (!mapContainer.current) return; // ensure container is available
+  useEffect(() => {
+    if (map.current) return; // stops map from intializing more than once
+    if (!mapContainer.current) return; // ensure container is available
 
-  map.current = new maptilersdk.Map({
-    container: mapContainer.current,
-    style: maptilersdk.MapStyle.STREETS,
-    center: [tokyo.lng, tokyo.lat],
-    zoom: zoom
-  });
+    map.current = new maptilersdk.Map({
+      container: mapContainer.current,
+      style: maptilersdk.MapStyle.STREETS,
+      center: [tokyo.lng, tokyo.lat],
+      zoom: zoom,
+    });
 
-}, [tokyo.lng, tokyo.lat, zoom]);
+    new maptilersdk.Marker({
+      color: "red",
+    })
+      .setLngLat([139.7525, 35.6846])
+      .addTo(map.current);
+  }, [tokyo.lng, tokyo.lat, zoom]);
 
-  return <div className="relative m-auto w-[calc(100%-100px)] h-[500px]">
-     <div ref={mapContainer} className="map absolute h-full w-full"  />;
+  return (
+    <div className="relative m-auto w-[calc(100%-100px)] h-[500px]">
+      <div ref={mapContainer} className="map absolute h-full w-full" />;
     </div>
-    
-    
-   
+  );
 }

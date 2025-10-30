@@ -35,6 +35,7 @@ export default function Home() {
   return (
     <div>
       <div className="w-[300px] h-[300px] bg-red-500">SALU!T</div>
+        <Map />
       Interactive below
       <Button buttonType={"main"}>
         <div>Incepe!</div>
@@ -106,7 +107,7 @@ export default function Home() {
         </Button>
       </form>
       {/* <pre>{JSON.stringify(cats, null, 2)}</pre> */}
-      <Map />
+    
     </div>
   );
 }
