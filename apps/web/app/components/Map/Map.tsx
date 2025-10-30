@@ -54,6 +54,10 @@ export default function Map() {
 
       map.current.on("move", () => {
         const lngLat = map.current?.getCenter();
+        const bounds = map.current?.getBounds();
+
+        
+        console.log('map bounds',bounds?.getWest(), bounds?.getSouth(), bounds?.getEast(), bounds?.getSouth())
         if (!lngLat) {
           return;
         }
