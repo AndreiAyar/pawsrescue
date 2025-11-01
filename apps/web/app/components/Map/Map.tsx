@@ -25,6 +25,16 @@ export default function Map() {
     markerRef.current?.setLngLat([lng, lat]);
     setCurrentPosition({ lng, lat });
   };
+
+  const getBounds = () => {
+    const bounds = map?.current?.getBounds();
+
+    // Convert bounds to [west, south, east, north]
+    const bbox = bounds?.toArray().flat();
+
+    // Ask your backend only for the visible area
+    return bbox?.join(",");
+  };
   useEffect(() => {
     if (map.current) return; // stops map from intializing more than once
     if (!mapContainer.current) return; // ensure container is available
@@ -90,7 +100,7 @@ export default function Map() {
       // add a clustered GeoJSON source for a sample set of earthquakes
       map?.current?.addSource("lostPetsJson", {
         type: "geojson",
-        data: `http://localhost:3015/lost-pets/clusters?bbox=1,-12,44,13&zoom=${zoom}`,
+        data: `http://localhost:3015/lost-pets/clusters?bbox=${getBounds()}&zoom=${zoom}`,
         cluster: true,
         clusterMaxZoom: 14, // Max zoom to cluster points on
         clusterRadius: 50, // Radius of each cluster when clustering points (defaults to 50)
@@ -160,27 +170,14 @@ export default function Map() {
       if (!map || !map?.current) {
         return;
       }
-      const bounds = map?.current?.getBounds();
-      const zoom = map?.current?.getZoom()?.toFixed(0);
 
-      // Convert bounds to [west, south, east, north]
-      const bbox = bounds?.toArray().flat();
+      const zoom = map?.current?.getZoom();
 
       // Ask your backend only for the visible area
-      // Round bounds to 4 decimal places for cache efficiency
-      const roundedBbox = bbox?.map((coord) => Number(coord.toFixed(4)));
-      const cacheKey = `lostPets_${roundedBbox?.join(",")}_${zoom}`;
-      const cache =
-        (window as any)._lostPetsCache ?? ((window as any)._lostPetsCache = {});
-      let geojson = cache[cacheKey];
-      if (!geojson) {
-        const res = await fetch(
-          `http://localhost:3015/lost-pets/clusters?bbox=${roundedBbox?.join(",")}&zoom=${zoom}`
-        );
-        geojson = await res.json();
-        cache[cacheKey] = geojson;
-      }
-    
+      const res = await fetch(
+        `http://localhost:3015/lost-pets/clusters?bbox=${getBounds()}&zoom=${zoom}`
+      );
+      const geojson = await res.json();
 
       const source = map?.current?.getSource("lostPetsJson") as
         | maptilersdk.GeoJSONSource
