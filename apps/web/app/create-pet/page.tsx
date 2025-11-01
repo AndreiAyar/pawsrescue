@@ -1,11 +1,15 @@
-'use client'
+"use client";
+
+import { useState } from "react";
+
 export default function CreatePetPage() {
-
-    <form>
-
-        hi
+  const [isFormLoading, setIsFormLoading] = useState(false);
+  const handleSubmit = () => {
+    return null;
+  };
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>Form 1</div>
     </form>
-
-
-  return <div>create a lost pet page....</div>;
+  );
 }

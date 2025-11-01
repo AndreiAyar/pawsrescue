@@ -182,7 +182,8 @@ export default function Map() {
       const source = map?.current?.getSource("lostPetsJson") as
         | maptilersdk.GeoJSONSource
         | undefined;
-      source?.setData(geojson);
+
+       source?.setData(geojson);
     });
   }, []);
 
