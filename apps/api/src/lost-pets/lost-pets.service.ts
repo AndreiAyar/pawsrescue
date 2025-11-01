@@ -62,6 +62,8 @@ export class LostPetsService {
     const bbox = bboxString.split(',').map(Number);
     const zoom = Number(zoomString);
 
+    console.log('bbox',bbox)
+
     if (bbox.length !== 4 || bbox.some(isNaN)) {
       throw new BadRequestException('Invalid bbox format');
     }
