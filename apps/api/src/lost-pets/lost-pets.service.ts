@@ -47,6 +47,8 @@ export class LostPetsService {
       maxZoom: 18,
     });
 
+    console.log('points',points[0].geometry.coordinates)
+
     this.cluster.load(points);
   }
 
