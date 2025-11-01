@@ -72,6 +72,7 @@ export class LostPetsService {
 
     try {
       const [minLng, minLat, maxLng, maxLat] = bbox;
+      // const clusters = this.cluster.getClusters([-180, -90, 180, 90], 10);
       const clusters = this.cluster.getClusters(
         [minLng, minLat, maxLng, maxLat],
         zoom,
