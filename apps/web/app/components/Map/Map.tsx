@@ -6,7 +6,7 @@ import "@maptiler/sdk/dist/maptiler-sdk.css";
 import { GeocodingControl } from "@maptiler/geocoding-control/react";
 import { createMapLibreGlMapController } from "@maptiler/geocoding-control/maplibregl-controller";
 import "@maptiler/geocoding-control/style.css";
-
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 export default function Map() {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
@@ -100,7 +100,7 @@ export default function Map() {
       // add a clustered GeoJSON source for a sample set of earthquakes
       map?.current?.addSource("lostPetsJson", {
         type: "geojson",
-        data: `http://localhost:3015/lost-pets/clusters?bbox=${getBounds()}&zoom=${zoom}`,
+        data: `http://192.168.1.7:3015/lost-pets/clusters?bbox=${getBounds()}&zoom=${zoom}`,
         cluster: true,
         clusterMaxZoom: 14, // Max zoom to cluster points on
         clusterRadius: 50, // Radius of each cluster when clustering points (defaults to 50)
@@ -175,7 +175,7 @@ export default function Map() {
 
       // Ask your backend only for the visible area
       const res = await fetch(
-        `http://localhost:3015/lost-pets/clusters?bbox=${getBounds()}&zoom=${zoom}`
+        `http://192.168.1.7:3015/lost-pets/clusters?bbox=${getBounds()}&zoom=${zoom}`
       );
       const geojson = await res.json();
 
@@ -187,7 +187,7 @@ export default function Map() {
   }, []);
 
   return (
-    <div className="relative bg-yellow-500 m-auto w-[calc(100%-100px)] h-[500px] p-20">
+    <div className="relative bg-yellow-500 m-auto w-[calc(100%-10px)] h-[500px] p-[20px]">
       <div className="geocoding absolute top-[10px] left-[10px]">
         {mapController && (
           <GeocodingControl
