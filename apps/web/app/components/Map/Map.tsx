@@ -168,7 +168,7 @@ export default function Map() {
 
       // Ask your backend only for the visible area
       // Round bounds to 4 decimal places for cache efficiency
-      const roundedBbox = bbox?.map((coord) => Number(coord.toFixed(2)));
+      const roundedBbox = bbox?.map((coord) => Number(coord.toFixed(4)));
       const cacheKey = `lostPets_${roundedBbox?.join(",")}_${zoom}`;
       const cache =
         (window as any)._lostPetsCache ?? ((window as any)._lostPetsCache = {});
