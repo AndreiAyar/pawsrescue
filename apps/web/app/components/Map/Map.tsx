@@ -161,18 +161,30 @@ export default function Map() {
         return;
       }
       const bounds = map?.current?.getBounds();
-      const zoom = map?.current?.getZoom();
+      const zoom = map?.current?.getZoom()?.toFixed(0);
 
       // Convert bounds to [west, south, east, north]
       const bbox = bounds?.toArray().flat();
 
       // Ask your backend only for the visible area
-      const res = await fetch(
-        `http://localhost:3015/lost-pets/clusters?bbox=${bbox?.join(",")}&zoom=${zoom}`
-      );
-      const geojson = await res.json();
+      // Round bounds to 4 decimal places for cache efficiency
+      const roundedBbox = bbox?.map((coord) => Number(coord.toFixed(2)));
+      const cacheKey = `lostPets_${roundedBbox?.join(",")}_${zoom}`;
+      const cache =
+        (window as any)._lostPetsCache ?? ((window as any)._lostPetsCache = {});
+      let geojson = cache[cacheKey];
+      if (!geojson) {
+        const res = await fetch(
+          `http://localhost:3015/lost-pets/clusters?bbox=${roundedBbox?.join(",")}&zoom=${zoom}`
+        );
+        geojson = await res.json();
+        cache[cacheKey] = geojson;
+      }
+    
 
-      const source = map?.current?.getSource("lostPetsJson") as maptilersdk.GeoJSONSource | undefined;
+      const source = map?.current?.getSource("lostPetsJson") as
+        | maptilersdk.GeoJSONSource
+        | undefined;
       source?.setData(geojson);
     });
   }, []);
