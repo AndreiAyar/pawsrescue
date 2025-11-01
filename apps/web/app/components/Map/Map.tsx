@@ -17,7 +17,7 @@ export default function Map() {
   const markerRef = useRef<maptilersdk.Marker | null>(null);
   const map = useRef<maptilersdk.Map | null>(null);
   const intialPos = { lang: 26.102, lat: 44.435 };
-  const zoom = 18;
+  const zoom = 17;
   maptilersdk.config.apiKey = "";
 
   const updatePosition = (lng: number, lat: number) => {
