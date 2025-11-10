@@ -20,6 +20,9 @@ import { LostPetsRepository } from './lost-pets.repository';
  * Location data is enriched using MapTiler's geocoding API for both forward and reverse geocoding.
  * See: https://docs.maptiler.com/cloud/api/geocoding/
  */
+
+//npx mikro-orm migration:create
+//npm run migration:up
 export class LostPetEntity {
   [EntityRepositoryType]?: LostPetsRepository;
 
@@ -31,6 +34,12 @@ export class LostPetEntity {
 
   @Property({ type: 'text', nullable: true, length: 1000 })
   description?: string;
+
+  @Property({ nullable: true })
+  type?: 'dog' | 'cat' | 'bird';
+
+  @Property({ type: 'json', nullable: true })
+  imageUrls?: string[]; // Store multiple image URLs or paths, referencing file storage or another DB
 
   // Raw location input (user-provided address or location description)
   @Property({ nullable: true })
@@ -45,6 +54,13 @@ export class LostPetEntity {
   city?: string;
 
   @Property({ nullable: true })
+  phone?: string;
+
+  @Property({ nullable: true })
+  @Index() // For email-based lookup
+  email!: string;
+
+  @Property({ nullable: true })
   @Index() // For regional filtering
   region?: string; // state/province/region
 
@@ -54,9 +70,6 @@ export class LostPetEntity {
 
   @Property({ nullable: true })
   postalCode?: string;
-
-  @Property({ nullable: true })
-  neighborhood?: string; // district/area from MapTiler
 
   // Formatted address from MapTiler response
   @Property({ nullable: true })
