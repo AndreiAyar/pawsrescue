@@ -35,8 +35,14 @@ export class LostPetEntity {
   @Property({ type: 'text', nullable: true, length: 1000 })
   description?: string;
 
+  @Property()
+  type!: 'dog' | 'cat' | 'bird' | 'other';
+
+  @Property()
+  email!: string;
+
   @Property({ nullable: true })
-  type?: 'dog' | 'cat' | 'bird';
+  phone?: string;
 
   @Property({ type: 'json', nullable: true })
   imageUrls?: string[]; // Store multiple image URLs or paths, referencing file storage or another DB
@@ -52,13 +58,6 @@ export class LostPetEntity {
   @Property({ nullable: true })
   @Index() // For city-based filtering
   city?: string;
-
-  @Property({ nullable: true })
-  phone?: string;
-
-  @Property({ nullable: true })
-  @Index() // For email-based lookup
-  email!: string;
 
   @Property({ nullable: true })
   @Index() // For regional filtering
@@ -79,13 +78,13 @@ export class LostPetEntity {
   placeName?: string; // MapTiler place name
 
   // Coordinates for mapping and proximity searches
-  @Property({ type: 'decimal', precision: 10, scale: 8, nullable: true })
+  @Property({ type: 'decimal', precision: 10, scale: 8 })
   @Index() // Essential for proximity queries
-  latitude?: number;
+  latitude!: number;
 
-  @Property({ type: 'decimal', precision: 11, scale: 8, nullable: true })
+  @Property({ type: 'decimal', precision: 11, scale: 8 })
   @Index() // Essential for proximity queries
-  longitude?: number;
+  longitude!: number;
 
   // Location metadata
   @Property({ nullable: true })
@@ -98,9 +97,9 @@ export class LostPetEntity {
   @Property({ type: 'json', nullable: true })
   mapTilerData?: any;
 
-  @Property({ type: 'datetime', onCreate: () => new Date(), nullable: true })
-  createdAt?: Date;
+  @Property({ onCreate: () => new Date() })
+  createdAt!: Date;
 
-  @Property({ type: 'datetime', onUpdate: () => new Date(), nullable: true })
-  updatedAt?: Date;
+  @Property({ onUpdate: () => new Date() })
+  updatedAt!: Date;
 }
