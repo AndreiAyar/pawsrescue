@@ -38,13 +38,20 @@ Manual Browse
 3) Contact owner.
 
 ## Page Map (Draft)
-- / (home + map preview, CTAs: report lost pet, scan found pet, browse map)
-- /report (lost pet form + location picker + photo upload)
-- /scan (upload photos + location + match results)
-- /search (map + list + filters)
-- /pets/[id] (lost pet detail + contact)
-- /owner/[token] (edit/close listing via email link)
-- /verify (email verification landing)
+- /[lang] (home + map preview, CTAs: report lost pet, scan found pet, browse map)
+- /[lang]/report (lost pet form + location picker + photo upload)
+- /[lang]/scan (upload photos + location + match results)
+- /[lang]/search (map + list + filters)
+- /[lang]/pets/[id] (lost pet detail + contact)
+- /[lang]/owner/[token] (edit/close listing via email link)
+- /[lang]/verify (email verification landing)
+
+## Confirmed Decisions (2026-01-27)
+- Routes: use /report and /pets/[id].
+- Language: bilingual (RO/EN) from the start, via /ro and /en prefixes.
+- Filters: city, type, color, status, radius.
+- Scan flow: location required; if geolocation denied, require manual city input, otherwise allow global search fallback.
+- Home map: static local image + CSS overlay "fake clusters"; interactive map only on /search.
 
 ## AI Matching (Draft)
 - On create: generate embeddings per photo (1-4). Decide between:
