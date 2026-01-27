@@ -53,6 +53,9 @@ Manual Browse
 - Scan flow: location required; if geolocation denied, require manual city input, otherwise allow global search fallback.
 - Home map: static local image + CSS overlay "fake clusters"; interactive map only on /search.
 
+## Design Notes (Future)
+- Add a warmer pastel palette and playful UI accents once base layout is stable.
+
 ## AI Matching (Draft)
 - On create: generate embeddings per photo (1-4). Decide between:
   - Per-photo embeddings stored, or

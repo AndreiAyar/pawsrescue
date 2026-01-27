@@ -1,5 +1,5 @@
-export default function LostPetPage (){
-    return (
-        <div>lost pet page....</div>
-    )
+import { redirect } from "next/navigation";
+
+export default function LostPetPage() {
+  redirect("/ro/search");
 }

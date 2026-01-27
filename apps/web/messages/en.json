@@ -1,0 +1,64 @@
+{
+  "Home": {
+    "nav": {
+      "search": "Search",
+      "report": "Report",
+      "scan": "Scan"
+    },
+    "hero": {
+      "title": "Find lost pets faster.",
+      "body": "Report a lost pet, browse the city map, and scan photos to get quick matches."
+    },
+    "cta": {
+      "report": "Report lost pet",
+      "scan": "Scan found pet",
+      "browse": "See live map"
+    },
+    "stats": {
+      "active": "Active reports",
+      "matches": "Matches this month",
+      "cities": "Cities covered"
+    },
+    "map": {
+      "label": "Live map of lost pets",
+      "badge": "Search pets near you"
+    },
+    "recent": {
+      "title": "Recent reports",
+      "viewAll": "View all"
+    },
+    "how": {
+      "title": "How it works",
+      "oneTitle": "Report",
+      "oneBody": "Add name, description, photos and location. Get an email link to edit.",
+      "twoTitle": "Scan",
+      "twoBody": "Upload photos and get nearby matches.",
+      "threeTitle": "Reconnect",
+      "threeBody": "Contact the owner and receive new match alerts."
+    },
+    "recentItems": [
+      {
+        "name": "Mimi",
+        "city": "Bucharest",
+        "type": "Cat",
+        "time": "2h"
+      },
+      {
+        "name": "Rex",
+        "city": "Cluj",
+        "type": "Dog",
+        "time": "5h"
+      },
+      {
+        "name": "Cleo",
+        "city": "Iasi",
+        "type": "Cat",
+        "time": "1d"
+      }
+    ]
+  },
+  "Common": {
+    "comingSoon": "Coming soon",
+    "backHome": "Back home"
+  }
+}

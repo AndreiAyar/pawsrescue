@@ -1,4 +1,5 @@
 export { Button } from "./button";
+export { LinkButton } from "./linkButton";
 export { Input } from "./input";
 export { FormField } from "./formField";
 export { Select } from "./select";

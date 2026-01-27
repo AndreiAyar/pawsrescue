@@ -1,0 +1,64 @@
+{
+  "Home": {
+    "nav": {
+      "search": "Cauta",
+      "report": "Raporteaza",
+      "scan": "Scaneaza"
+    },
+    "hero": {
+      "title": "Gaseste animalul pierdut mai repede.",
+      "body": "Raporteaza animalul pierdut, vezi harta cu anunturi din orasul tau si scaneaza poze pentru potriviri rapide."
+    },
+    "cta": {
+      "report": "Raporteaza animal pierdut",
+      "scan": "Scaneaza animal gasit",
+      "browse": "Vezi harta live"
+    },
+    "stats": {
+      "active": "Anunturi active",
+      "matches": "Potriviri luna curenta",
+      "cities": "Orase acoperite"
+    },
+    "map": {
+      "label": "Harta live cu animale pierdute",
+      "badge": "Cauta animale in zona ta"
+    },
+    "recent": {
+      "title": "Raportari recente",
+      "viewAll": "Vezi toate"
+    },
+    "how": {
+      "title": "Cum functioneaza",
+      "oneTitle": "Raportezi",
+      "oneBody": "Adaugi nume, descriere, poze si locatie. Primesti un link de editare pe email.",
+      "twoTitle": "Scanezi",
+      "twoBody": "Incarci poze cu animalul gasit si primesti potriviri in apropiere.",
+      "threeTitle": "Reunesti",
+      "threeBody": "Contactezi proprietarul si primesti alerte daca apar noi potriviri."
+    },
+    "recentItems": [
+      {
+        "name": "Mimi",
+        "city": "Bucuresti",
+        "type": "Pisica",
+        "time": "2h"
+      },
+      {
+        "name": "Rex",
+        "city": "Cluj",
+        "type": "Caine",
+        "time": "5h"
+      },
+      {
+        "name": "Cleo",
+        "city": "Iasi",
+        "type": "Pisica",
+        "time": "1d"
+      }
+    ]
+  },
+  "Common": {
+    "comingSoon": "In curand",
+    "backHome": "Inapoi acasa"
+  }
+}
