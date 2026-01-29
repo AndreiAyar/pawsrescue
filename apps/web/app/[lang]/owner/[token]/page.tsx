@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 export default async function OwnerPage({
   params,
 }: {
-  params: Promise<{ lang: string }>;
+  params: Promise<{ lang: string; token: string }>;
 }) {
   const { lang } = await params;
   const t = await getTranslations("Common");
