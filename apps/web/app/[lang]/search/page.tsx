@@ -7,8 +7,8 @@ export default async function SearchPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const t = await getTranslations("Common");
-  const title = lang === "ro" ? "Harta live" : "Live map";
+  const t = await getTranslations({ locale: lang, namespace: "Common" });
+  const title = t("titles.search");
 
   return (
     <main className="min-h-screen bg-[#f3f0e8] text-slate-900">
