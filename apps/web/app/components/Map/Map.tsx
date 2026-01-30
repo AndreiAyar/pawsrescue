@@ -30,7 +30,7 @@ type MapProps = {
   maxReverseGeocodeRequests?: number;
 };
 
-type ClusterData = FeatureCollection<Geometry> | Feature<Geometry> | Geometry;
+type GeoJSONData = FeatureCollection<Geometry> | Feature<Geometry> | Geometry;
 
 export default function Map({
   className = "",
@@ -64,15 +64,6 @@ export default function Map({
   const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clusterRequestIdRef = useRef(0);
   const pendingClusterRefreshRef = useRef(false);
-  const lastClusterBoundsRef = useRef<{
-    zoom: number;
-    bounds: [number, number, number, number];
-  } | null>(null);
-  const clusterCacheRef = useRef(
-    new globalThis.Map<string, ClusterData>()
-  );
-  const clusterCacheOrderRef = useRef<string[]>([]);
-  const maxClusterCacheEntries = 1000;
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -93,28 +84,6 @@ export default function Map({
 
     // Ask your backend only for the visible area
     return bbox?.join(",");
-  };
-
-  const parseBounds = (bbox: string) => {
-    const parts = bbox.split(",").map((value) => Number(value));
-    if (parts.length !== 4 || parts.some((value) => Number.isNaN(value))) {
-      return null;
-    }
-    return parts as [number, number, number, number];
-  };
-
-  const isBoundsContained = (
-    outer: [number, number, number, number],
-    inner: [number, number, number, number]
-  ) => {
-    const [outerWest, outerSouth, outerEast, outerNorth] = outer;
-    const [innerWest, innerSouth, innerEast, innerNorth] = inner;
-    return (
-      innerWest >= outerWest &&
-      innerSouth >= outerSouth &&
-      innerEast <= outerEast &&
-      innerNorth <= outerNorth
-    );
   };
 
   const makeClustersUrl = (bbox: string, zoomLevel: number) => {
@@ -140,36 +109,6 @@ export default function Map({
       return;
     }
     const normalizedZoom = Math.max(0, Math.round(zoomValue));
-    const parsedBounds = parseBounds(bbox);
-    if (!parsedBounds) {
-      return;
-    }
-
-    const lastBounds = lastClusterBoundsRef.current;
-    if (
-      lastBounds &&
-      lastBounds.zoom === normalizedZoom &&
-      isBoundsContained(lastBounds.bounds, parsedBounds)
-    ) {
-      return;
-    }
-
-    const cacheKey = `${normalizedZoom}:${bbox}`;
-    const cached = clusterCacheRef.current.get(cacheKey);
-    if (cached) {
-      const source = map.current.getSource("lostPetsJson") as
-        | maptilersdk.GeoJSONSource
-        | undefined;
-      if (source) {
-        source.setData(cached);
-      }
-      lastClusterBoundsRef.current = {
-        zoom: normalizedZoom,
-        bounds: parsedBounds,
-      };
-      return;
-    }
-
     const clustersUrl = makeClustersUrl(bbox, normalizedZoom);
     if (!clustersUrl) {
       return;
@@ -195,20 +134,7 @@ export default function Map({
       | maptilersdk.GeoJSONSource
       | undefined;
     if (source) {
-      const data = geojson as ClusterData;
-      source.setData(data);
-      clusterCacheRef.current.set(cacheKey, data);
-      clusterCacheOrderRef.current.push(cacheKey);
-      if (clusterCacheOrderRef.current.length > maxClusterCacheEntries) {
-        const oldest = clusterCacheOrderRef.current.shift();
-        if (oldest) {
-          clusterCacheRef.current.delete(oldest);
-        }
-      }
-      lastClusterBoundsRef.current = {
-        zoom: normalizedZoom,
-        bounds: parsedBounds,
-      };
+      source.setData(geojson as GeoJSONData);
     }
   };
 
