@@ -6,12 +6,37 @@ body {
   overflow-x: hidden;
 }
 
+:root {
+  --sand: #f3f0e8;
+  --peach: #f6c7a8;
+  --mint: #bfe7d6;
+  --butter: #f5e4a6;
+  --clay: #d8a27a;
+  --ink: #1f2937;
+}
+
 body {
   font-family: var(--font-body), ui-sans-serif, system-ui;
+  background-color: var(--sand);
 }
 
 .font-display {
   font-family: var(--font-display), var(--font-body), ui-sans-serif, system-ui;
+}
+
+.bg-warm-texture {
+  background-color: var(--sand);
+  background-image:
+    radial-gradient(1200px 600px at 20% -10%, rgba(246, 199, 168, 0.42), transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(191, 231, 214, 0.38), transparent 55%),
+    radial-gradient(700px 520px at 10% 90%, rgba(245, 228, 166, 0.42), transparent 55%),
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.22),
+      rgba(255, 255, 255, 0.22) 0px,
+      transparent 2px,
+      transparent 6px
+    );
 }
 
 /* * {

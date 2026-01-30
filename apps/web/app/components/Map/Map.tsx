@@ -6,7 +6,8 @@ import "@maptiler/sdk/dist/maptiler-sdk.css";
 import { GeocodingControl } from "@maptiler/geocoding-control/react";
 import { createMapLibreGlMapController } from "@maptiler/geocoding-control/maplibregl-controller";
 import "@maptiler/geocoding-control/style.css";
-const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+const apiBase = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
 export default function Map() {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
@@ -34,6 +35,14 @@ export default function Map() {
 
     // Ask your backend only for the visible area
     return bbox?.join(",");
+  };
+
+  const getClustersUrl = (zoomLevel: number) => {
+    const bbox = getBounds();
+    if (!bbox) {
+      return null;
+    }
+    return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${zoomLevel}`;
   };
   useEffect(() => {
     if (map.current) return; // stops map from intializing more than once
@@ -98,9 +107,14 @@ export default function Map() {
 
     map?.current?.on("load", function () {
       // add a clustered GeoJSON source for a sample set of earthquakes
+      const clustersUrl = getClustersUrl(zoom);
+      if (!clustersUrl) {
+        return;
+      }
+
       map?.current?.addSource("lostPetsJson", {
         type: "geojson",
-        data: `http://192.168.1.7:3015/lost-pets/clusters?bbox=${getBounds()}&zoom=${zoom}`,
+        data: clustersUrl,
         cluster: true,
         clusterMaxZoom: 14, // Max zoom to cluster points on
         clusterRadius: 50, // Radius of each cluster when clustering points (defaults to 50)
@@ -174,9 +188,12 @@ export default function Map() {
       const zoom = map?.current?.getZoom();
 
       // Ask your backend only for the visible area
-      const res = await fetch(
-        `http://192.168.1.7:3015/lost-pets/clusters?bbox=${getBounds()}&zoom=${zoom}`
-      );
+      const clustersUrl = getClustersUrl(zoom ?? 0);
+      if (!clustersUrl) {
+        return;
+      }
+
+      const res = await fetch(clustersUrl);
       const geojson = await res.json();
 
       const source = map?.current?.getSource("lostPetsJson") as

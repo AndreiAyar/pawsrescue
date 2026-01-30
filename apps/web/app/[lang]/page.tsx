@@ -4,14 +4,14 @@ import { getTranslations } from "next-intl/server";
 import { LinkButton } from "@repo/ui/linkButton";
 
 const clusterDots = [
-  { top: "18%", left: "22%", size: 16, opacity: 0.7 },
-  { top: "30%", left: "55%", size: 22, opacity: 0.8 },
-  { top: "42%", left: "35%", size: 10, opacity: 0.6 },
-  { top: "58%", left: "18%", size: 14, opacity: 0.6 },
-  { top: "66%", left: "48%", size: 20, opacity: 0.75 },
-  { top: "30%", left: "78%", size: 12, opacity: 0.7 },
-  { top: "54%", left: "78%", size: 18, opacity: 0.8 },
-  { top: "74%", left: "68%", size: 10, opacity: 0.6 },
+  { top: "18%", left: "22%", size: 16, opacity: 0.7, color: "#f3b68d" },
+  { top: "30%", left: "55%", size: 22, opacity: 0.8, color: "#bfe7d6" },
+  { top: "42%", left: "35%", size: 10, opacity: 0.6, color: "#f5d8a6" },
+  { top: "58%", left: "18%", size: 14, opacity: 0.6, color: "#f1b07d" },
+  { top: "66%", left: "48%", size: 20, opacity: 0.75, color: "#b9dfcc" },
+  { top: "30%", left: "78%", size: 12, opacity: 0.7, color: "#f6c7a8" },
+  { top: "54%", left: "78%", size: 18, opacity: 0.8, color: "#f2e0a4" },
+  { top: "74%", left: "68%", size: 10, opacity: 0.6, color: "#f0b77c" },
 ];
 
 type RecentItem = {
@@ -34,7 +34,7 @@ export default async function HomePage({
     ?.Home?.recentItems ?? [];
 
   return (
-    <main className="min-h-screen bg-[#f3f0e8] text-slate-900">
+    <main className="min-h-screen bg-warm-texture text-slate-900">
       <div className="mx-auto max-w-6xl px-6 py-10">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <Link href={`/${lang}`} className="flex items-center gap-2 text-lg font-black">
@@ -46,19 +46,19 @@ export default async function HomePage({
           <nav className="flex items-center gap-4 text-sm">
             <Link
               href={`/${lang}/search`}
-              className="underline decoration-2 underline-offset-4"
+              className="text-slate-600 underline decoration-2 underline-offset-4 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f3f0e8]"
             >
               {t("nav.search")}
             </Link>
             <Link
               href={`/${lang}/report`}
-              className="underline decoration-2 underline-offset-4"
+              className="rounded-full bg-[color:var(--peach)] px-3 py-1 font-semibold text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f3f0e8]"
             >
               {t("nav.report")}
             </Link>
             <Link
               href={`/${lang}/scan`}
-              className="underline decoration-2 underline-offset-4"
+              className="text-slate-600 underline decoration-2 underline-offset-4 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f3f0e8]"
             >
               {t("nav.scan")}
             </Link>
@@ -82,9 +82,9 @@ export default async function HomePage({
 
         <section className="mt-10 grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div>
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-900">
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white">
-                <CatFaceIcon className="h-4 w-4 text-amber-700" />
+                <CatFaceIcon className="h-4 w-4 text-emerald-700" />
               </span>
               {t("hero.kicker")}
             </div>
@@ -93,33 +93,41 @@ export default async function HomePage({
             </h1>
             <p className="mt-4 text-lg text-slate-700">{t("hero.body")}</p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <LinkButton href={`/${lang}/report`} variant="main">
+              <LinkButton
+                href={`/${lang}/report`}
+                variant="main"
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f3f0e8]"
+              >
                 {t("cta.report")}
               </LinkButton>
-              <LinkButton href={`/${lang}/scan`} variant="secondary">
+              <LinkButton
+                href={`/${lang}/scan`}
+                variant="secondary"
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f3f0e8]"
+              >
                 {t("cta.scan")}
               </LinkButton>
               <Link
                 href={`/${lang}/search`}
-                className="text-sm font-semibold underline decoration-2 underline-offset-4"
+                className="text-sm font-semibold underline decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f3f0e8]"
               >
                 {t("cta.browse")}
               </Link>
             </div>
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-slate-200 bg-white/70 p-4 shadow-[0_16px_30px_-24px_rgba(0,0,0,0.45)]">
+              <div className="rounded-lg border border-emerald-200 bg-white/80 p-4 shadow-[0_12px_26px_-22px_rgba(31,41,55,0.35)]">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {t("stats.active")}
                 </p>
                 <p className="mt-2 text-2xl font-black">1,284</p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-white/70 p-4 shadow-[0_16px_30px_-24px_rgba(0,0,0,0.45)]">
+              <div className="rounded-lg border border-amber-200 bg-white/80 p-4 shadow-[0_12px_26px_-22px_rgba(31,41,55,0.35)]">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {t("stats.matches")}
                 </p>
                 <p className="mt-2 text-2xl font-black">163</p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-white/70 p-4 shadow-[0_16px_30px_-24px_rgba(0,0,0,0.45)]">
+              <div className="rounded-lg border border-orange-200 bg-white/80 p-4 shadow-[0_12px_26px_-22px_rgba(31,41,55,0.35)]">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {t("stats.cities")}
                 </p>
@@ -129,7 +137,7 @@ export default async function HomePage({
           </div>
 
           <Link href={`/${lang}/search`} className="group block">
-            <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_20px_60px_-40px_rgba(0,0,0,0.35)]">
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_26px_70px_-38px_rgba(31,41,55,0.45)]">
               <div className="relative aspect-[16/10]">
                 <Image
                   src="/map-preview.svg"
@@ -141,16 +149,20 @@ export default async function HomePage({
                 {clusterDots.map((dot, index) => (
                   <span
                     key={`${dot.top}-${dot.left}-${index}`}
-                    className="absolute rounded-full bg-amber-500/70 shadow-[0_0_0_6px_rgba(245,158,11,0.18)]"
+                    className="absolute rounded-full shadow-[0_0_0_6px_rgba(245,158,11,0.12)]"
                     style={{
                       top: dot.top,
                       left: dot.left,
                       width: dot.size,
                       height: dot.size,
                       opacity: dot.opacity,
+                      backgroundColor: dot.color,
                     }}
                   />
                 ))}
+              </div>
+              <div className="absolute left-4 top-4 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 shadow-sm">
+                {t("map.label")}
               </div>
               <div className="absolute inset-x-4 bottom-4 rounded-lg border border-slate-200 bg-white/90 px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm">
                 {t("map.badge")}
@@ -174,7 +186,7 @@ export default async function HomePage({
               {recentItems.map((item) => (
                 <div
                   key={`${item.name}-${item.city}`}
-                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/70 px-4 py-3 shadow-[0_14px_24px_-22px_rgba(0,0,0,0.4)]"
+                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/75 px-4 py-3 shadow-[0_12px_24px_-20px_rgba(31,41,55,0.35)]"
                 >
                   <div>
                     <p className="text-sm font-semibold">{item.name}</p>
@@ -182,7 +194,7 @@ export default async function HomePage({
                       {item.type} · {item.city}
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase text-amber-700">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[color:var(--butter)] px-3 py-1 text-xs font-semibold uppercase text-amber-700">
                     <PawIcon className="h-3 w-3" />
                     {item.time}
                   </span>
@@ -191,12 +203,12 @@ export default async function HomePage({
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white/70 p-6">
+          <div className="rounded-2xl border border-slate-200 bg-white/75 p-6 shadow-[0_18px_30px_-26px_rgba(31,41,55,0.4)]">
             <h2 className="font-display text-2xl font-bold">{t("how.title")}</h2>
             <div className="mt-4 grid gap-4 text-sm text-slate-700">
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--mint)] text-emerald-800">
                     1
                   </span>
                   {t("how.oneTitle")}
@@ -205,7 +217,7 @@ export default async function HomePage({
               </div>
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--peach)] text-amber-800">
                     2
                   </span>
                   {t("how.twoTitle")}
@@ -214,7 +226,7 @@ export default async function HomePage({
               </div>
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--butter)] text-amber-800">
                     3
                   </span>
                   {t("how.threeTitle")}
