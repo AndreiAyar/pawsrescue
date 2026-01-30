@@ -6,6 +6,7 @@
       "scan": "Scan"
     },
     "hero": {
+      "kicker": "Pet friendly map",
       "title": "Find lost pets faster.",
       "body": "Report a lost pet, browse the city map, and scan photos to get quick matches."
     },
