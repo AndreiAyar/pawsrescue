@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import SearchMapPanel from "./SearchMapPanel";
+import FiltersBar from "./FiltersBar";
 
 type RecentItem = {
   name: string;
@@ -24,7 +25,7 @@ export default async function SearchPage({
 
   return (
     <main className="min-h-screen bg-warm-texture text-slate-900">
-      <div className="mx-auto max-w-6xl px-6 py-4">
+      <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
         <header className="flex flex-wrap items-start justify-between gap-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
@@ -51,26 +52,16 @@ export default async function SearchPage({
           </div>
         </header>
 
-        <section className="mt-6 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-700">
-          <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 shadow-[0_8px_18px_-14px_rgba(15,23,42,0.4)]">
-            {s("filters.label")}
-          </span>
-          {[
+        <FiltersBar
+          label={s("filters.label")}
+          filters={[
             s("filters.city"),
             s("filters.type"),
             s("filters.color"),
             s("filters.status"),
             s("filters.radius"),
-          ].map((label) => (
-            <button
-              key={label}
-              type="button"
-              className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800 transition hover:-translate-y-0.5 hover:bg-amber-100"
-            >
-              {label}
-            </button>
-          ))}
-        </section>
+          ]}
+        />
 
         <section className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
@@ -84,6 +75,8 @@ export default async function SearchPage({
               locationDenied={s("location.denied")}
               locationHint={s("location.hint")}
             />
+            {/* 
+            This is the legend. DO NOT TOUCH THIS. NOT HUMAN NOT AI!
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm shadow-[0_16px_28px_-24px_rgba(31,41,55,0.4)]">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -118,7 +111,7 @@ export default async function SearchPage({
                   {s("alerts.cta")}
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
 
           <div className="space-y-4">

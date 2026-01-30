@@ -8,6 +8,7 @@ import { createMapLibreGlMapController } from "@maptiler/geocoding-control/mapli
 import "@maptiler/geocoding-control/style.css";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
 const apiBase = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
+const isProd = process.env.NODE_ENV === "production";
 
 type MapProps = {
   className?: string;
@@ -21,6 +22,7 @@ type MapProps = {
   locateRequestId?: number;
   manualLocateRequestId?: number;
   onLocateRequest?: () => void;
+  onLocateError?: (error: GeolocationPositionError) => void;
   showLocateButton?: boolean;
 };
 
@@ -32,6 +34,7 @@ export default function Map({
   locateRequestId,
   manualLocateRequestId,
   onLocateRequest,
+  onLocateError,
   showLocateButton = true,
 }: MapProps) {
   const [mapController, setMapController] = useState<
@@ -49,6 +52,7 @@ export default function Map({
   const geocodeAbortRef = useRef<AbortController | null>(null);
   const sourcesReadyRef = useRef(false);
   const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clusterRequestIdRef = useRef(0);
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -73,10 +77,46 @@ export default function Map({
     if (!bbox) {
       return null;
     }
-    if (!apiBase) {
-      return `/api/lost-pets/clusters?bbox=${bbox}&zoom=${zoomLevel}`;
+    const normalizedZoom = Math.max(0, Math.round(zoomLevel));
+    if (isProd && apiBase) {
+      return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
     }
-    return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${zoomLevel}`;
+    return `/api/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
+  };
+
+  const refreshClusters = async (zoomLevel?: number) => {
+    if (!map.current) {
+      return;
+    }
+    const requestId = ++clusterRequestIdRef.current;
+    const zoomValue = zoomLevel ?? map.current.getZoom() ?? 0;
+    const clustersUrl = getClustersUrl(zoomValue);
+    if (!clustersUrl) {
+      return;
+    }
+    const res = await fetch(clustersUrl);
+    if (!res.ok) {
+      return;
+    }
+    const text = await res.text();
+    if (!text) {
+      return;
+    }
+    let geojson: unknown;
+    try {
+      geojson = JSON.parse(text);
+    } catch {
+      return;
+    }
+    if (requestId !== clusterRequestIdRef.current) {
+      return;
+    }
+    const source = map.current.getSource("lostPetsJson") as
+      | maptilersdk.GeoJSONSource
+      | undefined;
+    if (source) {
+      source.setData(geojson as maptilersdk.GeoJSONSource["data"]);
+    }
   };
 
   const triggerReverseGeocode = (lng: number, lat: number) => {
@@ -200,14 +240,12 @@ export default function Map({
         return;
       }
 
-      const clustersUrl = getClustersUrl(zoom);
-      if (!clustersUrl) {
-        return;
-      }
-
       map.current.addSource("lostPetsJson", {
         type: "geojson",
-        data: clustersUrl,
+        data: {
+          type: "FeatureCollection",
+          features: [],
+        },
         cluster: true,
         clusterMaxZoom: 14,
         clusterRadius: 50,
@@ -576,9 +614,13 @@ export default function Map({
     if (center) {
       triggerReverseGeocode(center.lng, center.lat);
     }
+    scheduleRefresh();
     return () => {
       if (ringIntervalRef.current) {
         clearInterval(ringIntervalRef.current);
+      }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
       }
     };
   }, []);
@@ -611,9 +653,11 @@ export default function Map({
         } else {
           userMarkerRef.current.setLngLat([longitude, latitude]);
         }
+        scheduleRefresh();
         setLocating(false);
       },
-      () => {
+      (error) => {
+        onLocateError?.(error);
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -621,33 +665,25 @@ export default function Map({
   };
 
   useEffect(() => {
-    map?.current?.on("moveend", async () => {
+    const handleRefresh = async () => {
       if (!map || !map?.current) {
         return;
       }
 
-      const zoom = map?.current?.getZoom();
-
-      // Ask your backend only for the visible area
-      const clustersUrl = getClustersUrl(zoom ?? 0);
-      if (!clustersUrl) {
-        return;
-      }
-
-      const res = await fetch(clustersUrl);
-      const geojson = await res.json();
-
-      const source = map?.current?.getSource("lostPetsJson") as
-        | maptilersdk.GeoJSONSource
-        | undefined;
-
-      source?.setData(geojson);
+      scheduleRefresh();
 
       const center = map?.current?.getCenter();
       if (center) {
         triggerReverseGeocode(center.lng, center.lat);
       }
-    });
+    };
+
+    map?.current?.on("moveend", handleRefresh);
+    map?.current?.on("zoomend", handleRefresh);
+    return () => {
+      map?.current?.off("moveend", handleRefresh);
+      map?.current?.off("zoomend", handleRefresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -684,6 +720,7 @@ export default function Map({
                   //     zoom: 15,
                   //     duration: 1000
                   //   });
+                  scheduleRefresh();
                 }
               }
             }}

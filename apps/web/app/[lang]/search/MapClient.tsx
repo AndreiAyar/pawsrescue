@@ -118,17 +118,29 @@ export default function MapClient({
           onLocateRequest={() => {
             setUserLocateRequestId((prev) => prev + 1);
           }}
+          onLocateError={(error) => {
+            if (error.code === 1) {
+              setPermissionState("denied");
+              if (userLocateRequestId > 0) {
+                setHighlightDenied(true);
+              }
+            }
+          }}
           onLocationChange={(next) => {
             setLocation(next.label);
           }}
         />
       </div>
-      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-700 shadow-[0_12px_22px_-18px_rgba(31,41,55,0.35)]">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-3 text-sm text-slate-700 shadow-[0_12px_22px_-18px_rgba(31,41,55,0.35)] sm:flex-row sm:items-center sm:justify-between sm:px-4">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
           {locationLabel}
         </span>
-        <span className="text-sm font-semibold text-slate-900">
-          {location || locationPlaceholder}
+        <span className="text-sm font-semibold text-slate-900 sm:text-right">
+          {location ? (
+            <span className="block break-words">{location}</span>
+          ) : (
+            locationPlaceholder
+          )}
         </span>
       </div>
       {permissionState === "denied" && (

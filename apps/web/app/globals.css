@@ -39,6 +39,14 @@ body {
     );
 }
 
+/* Scope iOS input zoom fix to search map only */
+.search-map-panel .maptiler-geocoding-control input,
+.search-map-panel .maptiler-geocoding-control .maptiler-geocoding-input,
+.search-map-panel .maplibregl-ctrl-geocoder--input {
+  font-size: 16px;
+  line-height: 1.4;
+}
+
 /* * {
   box-sizing: border-box;
   padding: 0;
