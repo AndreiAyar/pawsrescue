@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Map from "../../components/Map/Map";
+import MapView from "../../components/Map/Map";
 
 type MapClientProps = {
   mapHeightClassName?: string;
@@ -114,12 +114,14 @@ export default function MapClient({
   return (
     <div className="space-y-3">
       <div className={mapHeightClassName}>
-        <Map
+        <MapView
           locateLabel={locateLabel}
           locatingLabel={locatingLabel}
           locateRequestId={locateRequestId}
           manualLocateRequestId={manualLocateRequestId}
           clustersRequestId={clustersRequestId}
+          persistClusterFeatures
+          maxPersistedClusterFeatures={2000}
           showLocateButton={showLocateButton}
           onLocateRequest={() => {
             setUserLocateRequestId((prev) => prev + 1);

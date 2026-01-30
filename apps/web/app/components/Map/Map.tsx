@@ -28,11 +28,13 @@ type MapProps = {
   showLocateButton?: boolean;
   enableCenterMarker?: boolean;
   maxReverseGeocodeRequests?: number;
+  persistClusterFeatures?: boolean;
+  maxPersistedClusterFeatures?: number;
 };
 
 type GeoJSONData = FeatureCollection<Geometry> | Feature<Geometry> | Geometry;
 
-export default function Map({
+export default function MapView({
   className = "",
   onLocationChange,
   locateLabel = "Locate me",
@@ -45,6 +47,8 @@ export default function Map({
   showLocateButton = true,
   enableCenterMarker = false,
   maxReverseGeocodeRequests = 25,
+  persistClusterFeatures = false,
+  maxPersistedClusterFeatures = 10000,
 }: MapProps) {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
@@ -64,6 +68,10 @@ export default function Map({
   const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clusterRequestIdRef = useRef(0);
   const pendingClusterRefreshRef = useRef(false);
+  const persistedFeaturesRef = useRef(
+    new Map<number | string, Feature<Geometry>>()
+  );
+  const persistedFeatureOrderRef = useRef<Array<number | string>>([]);
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -133,9 +141,56 @@ export default function Map({
     const source = map.current.getSource("lostPetsJson") as
       | maptilersdk.GeoJSONSource
       | undefined;
-    if (source) {
-      source.setData(geojson as GeoJSONData);
+    if (!source) {
+      return;
     }
+
+    const incoming = geojson as GeoJSONData;
+    if (
+      persistClusterFeatures &&
+      incoming.type === "FeatureCollection" &&
+      Array.isArray(incoming.features)
+    ) {
+      for (const feature of incoming.features) {
+        if (!feature || feature.type !== "Feature") {
+          continue;
+        }
+        const properties = feature.properties as {
+          id?: number | string;
+          point_count?: number;
+          cluster?: boolean;
+        } | null;
+        if (!properties || properties.point_count || properties.cluster) {
+          continue;
+        }
+        const featureId = properties.id;
+        if (featureId === undefined || featureId === null) {
+          continue;
+        }
+        if (!persistedFeaturesRef.current.has(featureId)) {
+          persistedFeatureOrderRef.current.push(featureId);
+        }
+        persistedFeaturesRef.current.set(featureId, feature);
+      }
+
+      while (
+        persistedFeatureOrderRef.current.length > maxPersistedClusterFeatures
+      ) {
+        const oldest = persistedFeatureOrderRef.current.shift();
+        if (oldest !== undefined) {
+          persistedFeaturesRef.current.delete(oldest);
+        }
+      }
+
+      const merged: FeatureCollection<Geometry> = {
+        type: "FeatureCollection",
+        features: Array.from(persistedFeaturesRef.current.values()),
+      };
+      source.setData(merged);
+      return;
+    }
+
+    source.setData(incoming);
   };
 
   const triggerReverseGeocode = (lng: number, lat: number) => {
