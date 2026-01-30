@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Feature, FeatureCollection, Geometry, Point } from "geojson";
 import * as maptilersdk from "@maptiler/sdk";
 import "@maptiler/sdk/dist/maptiler-sdk.css";
 import { GeocodingControl } from "@maptiler/geocoding-control/react";
@@ -25,7 +26,11 @@ type MapProps = {
   onLocateRequest?: () => void;
   onLocateError?: (error: GeolocationPositionError) => void;
   showLocateButton?: boolean;
+  enableCenterMarker?: boolean;
+  maxReverseGeocodeRequests?: number;
 };
+
+type ClusterData = FeatureCollection<Geometry> | Feature<Geometry> | Geometry;
 
 export default function Map({
   className = "",
@@ -38,6 +43,8 @@ export default function Map({
   onLocateRequest,
   onLocateError,
   showLocateButton = true,
+  enableCenterMarker = false,
+  maxReverseGeocodeRequests = 25,
 }: MapProps) {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
@@ -52,15 +59,28 @@ export default function Map({
   const intialPosRef = useRef({ lang: 26.102, lat: 44.435 });
   const geocodeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const geocodeAbortRef = useRef<AbortController | null>(null);
+  const geocodeRequestCountRef = useRef(0);
   const sourcesReadyRef = useRef(false);
   const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clusterRequestIdRef = useRef(0);
   const pendingClusterRefreshRef = useRef(false);
+  const lastClusterBoundsRef = useRef<{
+    zoom: number;
+    bounds: [number, number, number, number];
+  } | null>(null);
+  const clusterCacheRef = useRef(
+    new globalThis.Map<string, ClusterData>()
+  );
+  const clusterCacheOrderRef = useRef<string[]>([]);
+  const maxClusterCacheEntries = 1000;
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
 
   const updatePosition = (lng: number, lat: number) => {
+    if (!enableCenterMarker) {
+      return;
+    }
     markerRef.current?.setLngLat([lng, lat]);
     setCurrentPosition({ lng, lat });
   };
@@ -75,11 +95,29 @@ export default function Map({
     return bbox?.join(",");
   };
 
-  const getClustersUrl = (zoomLevel: number) => {
-    const bbox = getBounds();
-    if (!bbox) {
+  const parseBounds = (bbox: string) => {
+    const parts = bbox.split(",").map((value) => Number(value));
+    if (parts.length !== 4 || parts.some((value) => Number.isNaN(value))) {
       return null;
     }
+    return parts as [number, number, number, number];
+  };
+
+  const isBoundsContained = (
+    outer: [number, number, number, number],
+    inner: [number, number, number, number]
+  ) => {
+    const [outerWest, outerSouth, outerEast, outerNorth] = outer;
+    const [innerWest, innerSouth, innerEast, innerNorth] = inner;
+    return (
+      innerWest >= outerWest &&
+      innerSouth >= outerSouth &&
+      innerEast <= outerEast &&
+      innerNorth <= outerNorth
+    );
+  };
+
+  const makeClustersUrl = (bbox: string, zoomLevel: number) => {
     const normalizedZoom = Math.max(0, Math.round(zoomLevel));
     if (isProd && apiBase) {
       return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
@@ -97,7 +135,42 @@ export default function Map({
     }
     const requestId = ++clusterRequestIdRef.current;
     const zoomValue = zoomLevel ?? map.current.getZoom() ?? 0;
-    const clustersUrl = getClustersUrl(zoomValue);
+    const bbox = getBounds();
+    if (!bbox) {
+      return;
+    }
+    const normalizedZoom = Math.max(0, Math.round(zoomValue));
+    const parsedBounds = parseBounds(bbox);
+    if (!parsedBounds) {
+      return;
+    }
+
+    const lastBounds = lastClusterBoundsRef.current;
+    if (
+      lastBounds &&
+      lastBounds.zoom === normalizedZoom &&
+      isBoundsContained(lastBounds.bounds, parsedBounds)
+    ) {
+      return;
+    }
+
+    const cacheKey = `${normalizedZoom}:${bbox}`;
+    const cached = clusterCacheRef.current.get(cacheKey);
+    if (cached) {
+      const source = map.current.getSource("lostPetsJson") as
+        | maptilersdk.GeoJSONSource
+        | undefined;
+      if (source) {
+        source.setData(cached);
+      }
+      lastClusterBoundsRef.current = {
+        zoom: normalizedZoom,
+        bounds: parsedBounds,
+      };
+      return;
+    }
+
+    const clustersUrl = makeClustersUrl(bbox, normalizedZoom);
     if (!clustersUrl) {
       return;
     }
@@ -122,12 +195,31 @@ export default function Map({
       | maptilersdk.GeoJSONSource
       | undefined;
     if (source) {
-      source.setData(geojson as maptilersdk.GeoJSONSource["data"]);
+      const data = geojson as ClusterData;
+      source.setData(data);
+      clusterCacheRef.current.set(cacheKey, data);
+      clusterCacheOrderRef.current.push(cacheKey);
+      if (clusterCacheOrderRef.current.length > maxClusterCacheEntries) {
+        const oldest = clusterCacheOrderRef.current.shift();
+        if (oldest) {
+          clusterCacheRef.current.delete(oldest);
+        }
+      }
+      lastClusterBoundsRef.current = {
+        zoom: normalizedZoom,
+        bounds: parsedBounds,
+      };
     }
   };
 
   const triggerReverseGeocode = (lng: number, lat: number) => {
     if (!onLocationChange || !maptilersdk.config.apiKey) {
+      return;
+    }
+    if (maxReverseGeocodeRequests <= 0) {
+      return;
+    }
+    if (geocodeRequestCountRef.current >= maxReverseGeocodeRequests) {
       return;
     }
 
@@ -142,6 +234,7 @@ export default function Map({
 
       const controller = new AbortController();
       geocodeAbortRef.current = controller;
+      geocodeRequestCountRef.current += 1;
 
       try {
         const res = await fetch(
@@ -201,26 +294,25 @@ export default function Map({
     const controller = createMapLibreGlMapController(map.current, maptilersdk);
     setMapController(controller);
 
-    const marker = new maptilersdk.Marker({
-      color: "red",
-    })
-      .setLngLat([initialPos.lang, initialPos.lat])
-      .addTo(map.current);
-    markerRef.current = marker;
+    if (enableCenterMarker) {
+      const marker = new maptilersdk.Marker({
+        color: "red",
+      })
+        .setLngLat([initialPos.lang, initialPos.lat])
+        .addTo(map.current);
+      markerRef.current = marker;
+    }
 
     // Move marker when map is clicked
     if (map.current) {
-      map.current.on("click", (e: { lngLat: { lng: number; lat: number } }) => {
-        const { lng, lat } = e.lngLat;
-        updatePosition(lng, lat);
-      });
-
       map.current.on("move", () => {
+        if (!enableCenterMarker) {
+          return;
+        }
         const lngLat = map.current?.getCenter();
         if (!lngLat) {
           return;
         }
-
         updatePosition(lngLat.lng, lngLat.lat);
       });
     }
@@ -516,15 +608,20 @@ export default function Map({
         if (!source || typeof clusterId !== "number") {
           return;
         }
-        source.getClusterExpansionZoom(clusterId, (error, nextZoom) => {
-          if (error || !map.current) {
-            return;
-          }
-          map.current.easeTo({
-            center: clusterFeature.geometry.coordinates as [number, number],
-            zoom: nextZoom,
-          });
-        });
+        void source
+          .getClusterExpansionZoom(clusterId)
+          .then((nextZoom) => {
+            if (!map.current) {
+              return;
+            }
+            const coords = (clusterFeature.geometry as Point)
+              .coordinates as [number, number];
+            map.current.easeTo({
+              center: coords,
+              zoom: nextZoom,
+            });
+          })
+          .catch(() => {});
       });
 
       map.current.on("click", "unclustered-point", (event) => {
@@ -536,7 +633,10 @@ export default function Map({
           return;
         }
         const { name, type } = feature.properties ?? {};
-        const coords = feature.geometry.coordinates as [number, number];
+        const coords = (feature.geometry as Point).coordinates as [
+          number,
+          number,
+        ];
         const avatar =
           type === "cat"
             ? "🐱"
@@ -622,7 +722,7 @@ export default function Map({
     }
 
     const center = map.current?.getCenter();
-    if (center) {
+    if (center && enableCenterMarker) {
       triggerReverseGeocode(center.lng, center.lat);
     }
     return () => {
@@ -654,9 +754,11 @@ export default function Map({
           el.style.background = "#0ea5e9";
           el.style.boxShadow = "0 0 0 6px rgba(14,165,233,0.25)";
           el.style.border = "2px solid #ffffff";
-          userMarkerRef.current = new maptilersdk.Marker({ element: el })
-            .setLngLat([longitude, latitude])
-            .addTo(map.current);
+          if (map.current) {
+            userMarkerRef.current = new maptilersdk.Marker({ element: el })
+              .setLngLat([longitude, latitude])
+              .addTo(map.current);
+          }
         } else {
           userMarkerRef.current.setLngLat([longitude, latitude]);
         }
@@ -687,7 +789,7 @@ export default function Map({
       }
       await refreshClusters();
       const center = map.current.getCenter();
-      if (center) {
+      if (center && enableCenterMarker) {
         triggerReverseGeocode(center.lng, center.lat);
       }
     };
