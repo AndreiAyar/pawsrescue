@@ -1,15 +1,6 @@
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { getTranslations } from "next-intl/server";
-
-const Map = dynamic(() => import("../../components/Map/Map"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-[520px] w-full items-center justify-center rounded-2xl border border-slate-200 bg-white/70 text-sm font-semibold text-slate-600 shadow-[0_18px_30px_-26px_rgba(31,41,55,0.4)]">
-      Loading map...
-    </div>
-  ),
-});
+import MapClient from "./MapClient";
 
 export default async function SearchPage({
   params,
@@ -39,7 +30,7 @@ export default async function SearchPage({
         </header>
 
         <section className="mt-6">
-          <Map />
+          <MapClient />
         </section>
       </div>
     </main>
