@@ -53,6 +53,8 @@ export default function Map({
   const sourcesReadyRef = useRef(false);
   const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clusterRequestIdRef = useRef(0);
+  const initialClustersLoadedRef = useRef(false);
+  const pendingRefreshRef = useRef(false);
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -589,6 +591,15 @@ export default function Map({
         }
       });
 
+      void (async () => {
+        await refreshClusters();
+        initialClustersLoadedRef.current = true;
+        if (pendingRefreshRef.current) {
+          pendingRefreshRef.current = false;
+          await refreshClusters();
+        }
+      })();
+
       if (ringIntervalRef.current) {
         clearInterval(ringIntervalRef.current);
       }
@@ -614,13 +625,9 @@ export default function Map({
     if (center) {
       triggerReverseGeocode(center.lng, center.lat);
     }
-    scheduleRefresh();
     return () => {
       if (ringIntervalRef.current) {
         clearInterval(ringIntervalRef.current);
-      }
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
       }
     };
   }, []);
@@ -653,7 +660,6 @@ export default function Map({
         } else {
           userMarkerRef.current.setLngLat([longitude, latitude]);
         }
-        scheduleRefresh();
         setLocating(false);
       },
       (error) => {
@@ -665,24 +671,28 @@ export default function Map({
   };
 
   useEffect(() => {
+    if (!map.current) {
+      return;
+    }
+
     const handleRefresh = async () => {
-      if (!map || !map?.current) {
+      if (!map.current) {
         return;
       }
-
-      scheduleRefresh();
-
-      const center = map?.current?.getCenter();
+      if (!initialClustersLoadedRef.current) {
+        pendingRefreshRef.current = true;
+        return;
+      }
+      await refreshClusters();
+      const center = map.current.getCenter();
       if (center) {
         triggerReverseGeocode(center.lng, center.lat);
       }
     };
 
-    map?.current?.on("moveend", handleRefresh);
-    map?.current?.on("zoomend", handleRefresh);
+    map.current.on("moveend", handleRefresh);
     return () => {
-      map?.current?.off("moveend", handleRefresh);
-      map?.current?.off("zoomend", handleRefresh);
+      map.current?.off("moveend", handleRefresh);
     };
   }, []);
 
@@ -720,7 +730,6 @@ export default function Map({
                   //     zoom: 15,
                   //     duration: 1000
                   //   });
-                  scheduleRefresh();
                 }
               }
             }}
