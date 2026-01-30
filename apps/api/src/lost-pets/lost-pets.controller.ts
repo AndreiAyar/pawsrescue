@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { LostPetsService } from './lost-pets.service';
 import { LostPetDTO } from './dtos/lost-pet.dto';
-import { LostPet } from './interfaces/lostPet.interface';
+// import { LostPet } from './interfaces/lostPet.interface';
 
 @Controller('lost-pets')
 export class LostPetsController {
@@ -17,7 +17,7 @@ export class LostPetsController {
 
   @Get('clusters')
   async getClusters(@Query('bbox') bbox: string, @Query('zoom') zoom: string) {
-    return this.lostPetsService.getMockClusters(bbox, zoom);
+    return this.lostPetsService.getClusters(bbox, zoom);
   }
 
   @Get(':id')

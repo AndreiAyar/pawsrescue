@@ -129,7 +129,7 @@ export default function MapClient({
         <div
           ref={deniedRef}
           className={`rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900 shadow-[0_12px_22px_-18px_rgba(245,158,11,0.35)] transition ${
-            highlightDenied ? "ring-2 ring-amber-300/70" : ""
+            highlightDenied ? "ring-2 ring-amber-300/70 animate-pulse" : ""
           }`}
         >
           <span className="font-semibold uppercase tracking-wide">

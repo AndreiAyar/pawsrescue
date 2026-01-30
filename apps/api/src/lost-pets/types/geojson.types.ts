@@ -27,9 +27,10 @@ export interface Feature<T = any> {
   geometry: Point;
 }
 
-export interface FeatureCollection<T = any> {
+export interface FeatureCollection<T = any, M = unknown> {
   type: 'FeatureCollection';
   features: Feature<T>[];
+  meta?: M;
 }
 
 export type PetFeature = Feature<PetProperties>;
@@ -39,7 +40,12 @@ export type ClusterFeature = Feature<ClusterProperties>;
 export type ClusteringFeature = PetFeature | ClusterFeature;
 
 export type ClusteringResult = FeatureCollection<
-  PetProperties | ClusterProperties
+  PetProperties | ClusterProperties,
+  {
+    count: number;
+    zoom: number;
+    bbox: BoundingBox;
+  }
 >;
 
 export type BoundingBox = [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
