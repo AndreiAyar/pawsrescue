@@ -26,6 +26,8 @@ export default function MapClient({
   manualLocateRequestId,
   showLocateButton = true,
 }: MapClientProps) {
+  const useTileClusters = true;
+  console.log('aa',process.env.NEXT_PUBLIC_CLUSTER_MODE)
   const [location, setLocation] = useState<string>("");
   const [permissionState, setPermissionState] = useState<
     "granted" | "denied" | "prompt" | "unknown"
@@ -122,6 +124,7 @@ export default function MapClient({
           clustersRequestId={clustersRequestId}
           persistClusterFeatures
           maxPersistedClusterFeatures={2000}
+          useTileClusters={useTileClusters}
           showLocateButton={showLocateButton}
           onLocateRequest={() => {
             setUserLocateRequestId((prev) => prev + 1);

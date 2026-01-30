@@ -10,7 +10,10 @@ import { LostPetDTO } from './dtos/lost-pet.dto';
 import { EntityManager } from '@mikro-orm/postgresql';
 import Supercluster from 'supercluster';
 import { ClusteringResult, PetFeature } from './types';
+import { tileToBbox } from './geo-tiles';
+import { getMockClusters } from './mock-clusters';
 
+const MOCK_DATA = true;
 @Injectable()
 export class LostPetsService {
   constructor(
@@ -45,6 +48,9 @@ export class LostPetsService {
 
     try {
       const [minLng, minLat, maxLng, maxLat] = bbox;
+      if (MOCK_DATA) {
+        return getMockClusters([minLng, minLat, maxLng, maxLat], zoom);
+      }
       const pets = await this.lostPetsRepository.find(
         {
           latitude: { $gte: minLat, $lte: maxLat },
@@ -80,11 +86,31 @@ export class LostPetsService {
         [minLng, minLat, maxLng, maxLat],
         zoom,
       );
+      const features = clusters.map((feature) => {
+        const properties = feature.properties as
+          | {
+              cluster?: boolean;
+              cluster_id?: number;
+            }
+          | undefined;
+        if (properties?.cluster && typeof properties.cluster_id === 'number') {
+          return {
+            ...feature,
+            properties: {
+              ...feature.properties,
+              expansion_zoom: cluster.getClusterExpansionZoom(
+                properties.cluster_id,
+              ),
+            },
+          };
+        }
+        return feature;
+      });
       return {
         type: 'FeatureCollection',
-        features: clusters as ClusteringResult['features'],
+        features: features as ClusteringResult['features'],
         meta: {
-          count: clusters.length,
+          count: features.length,
           zoom,
           bbox: [minLng, minLat, maxLng, maxLat],
         },
@@ -94,6 +120,42 @@ export class LostPetsService {
         `Clustering failed: ${error instanceof Error ? error.message : error}`,
       );
     }
+  }
+
+  async getClustersForTile(
+    zoom: number,
+    x: number,
+    y: number,
+    buffer?: string,
+  ): Promise<ClusteringResult> {
+    if (!Number.isInteger(zoom) || zoom < 0 || zoom > 24) {
+      throw new BadRequestException('Invalid zoom level');
+    }
+    const scale = Math.pow(2, zoom);
+    if (
+      !Number.isInteger(x) ||
+      !Number.isInteger(y) ||
+      x < 0 ||
+      y < 0 ||
+      x >= scale ||
+      y >= scale
+    ) {
+      throw new BadRequestException('Invalid tile coordinates');
+    }
+
+    const bufferValue = buffer === undefined ? 1 : Number.parseInt(buffer, 10);
+    if (!Number.isFinite(bufferValue) || bufferValue < 0) {
+      throw new BadRequestException('Invalid tile buffer');
+    }
+
+    const bbox = tileToBbox({
+      z: zoom,
+      x,
+      y,
+      buffer: bufferValue,
+    });
+
+    return this.getClusters(bbox.join(','), String(zoom));
   }
   async findAll(): Promise<LostPetEntity[]> {
     return await this.lostPetsRepository.findAll();

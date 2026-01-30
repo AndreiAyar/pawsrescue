@@ -8,12 +8,14 @@ import { GeocodingControl } from "@maptiler/geocoding-control/react";
 import { createMapLibreGlMapController } from "@maptiler/geocoding-control/maplibregl-controller";
 import "@maptiler/geocoding-control/style.css";
 import { createClusterCache } from "./clusterCache";
+import { getTileRequestForBounds } from "./clusterTiles";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
 const apiBase = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
 const isProd = process.env.NODE_ENV === "production";
 const BBOX_PRECISION = 1e5;
 const BBOX_PADDING_FACTOR = 0.2;
 const MAX_CACHED_COVERAGE_PER_ZOOM = 64;
+const CLUSTER_REFRESH_DEBOUNCE_MS = 300;
 
 type MapProps = {
   className?: string;
@@ -34,6 +36,7 @@ type MapProps = {
   maxReverseGeocodeRequests?: number;
   persistClusterFeatures?: boolean;
   maxPersistedClusterFeatures?: number;
+  useTileClusters?: boolean;
 };
 
 type GeoJSONData = FeatureCollection<Geometry> | Feature<Geometry> | Geometry;
@@ -53,6 +56,7 @@ export default function MapView({
   maxReverseGeocodeRequests = 25,
   persistClusterFeatures = false,
   maxPersistedClusterFeatures = 10000,
+  useTileClusters = false,
 }: MapProps) {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
@@ -70,9 +74,11 @@ export default function MapView({
   const geocodeRequestCountRef = useRef(0);
   const sourcesReadyRef = useRef(false);
   const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clusterRequestIdRef = useRef(0);
   const pendingClusterRefreshRef = useRef(false);
   const skipNextMoveendRef = useRef(false);
+  const inFlightRequestKeyRef = useRef<string | null>(null);
   const cacheRef = useRef(
     createClusterCache({
       precision: BBOX_PRECISION,
@@ -98,11 +104,25 @@ export default function MapView({
   };
 
   const makeClustersUrl = (bbox: string, zoomLevel: number) => {
-    const normalizedZoom = Math.max(0, Math.round(zoomLevel));
+    const normalizedZoom = Math.max(0, Math.floor(zoomLevel));
     if (isProd && apiBase) {
       return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
     }
     return `/api/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
+  };
+
+  const makeTileClustersUrl = (
+    zoomLevel: number,
+    x: number,
+    y: number,
+    buffer: number
+  ) => {
+    const normalizedZoom = Math.max(0, Math.floor(zoomLevel));
+    const bufferParam = buffer > 1 ? `?buffer=${buffer}` : "";
+    if (isProd && apiBase) {
+      return `${apiBase}/lost-pets/clusters/tile/${normalizedZoom}/${x}/${y}${bufferParam}`;
+    }
+    return `/api/lost-pets/clusters/tile/${normalizedZoom}/${x}/${y}${bufferParam}`;
   };
 
   const refreshClusters = async (zoomLevel?: number) => {
@@ -120,8 +140,15 @@ export default function MapView({
       return;
     }
     const { bbox, bboxString } = bounds;
-    const normalizedZoom = Math.max(0, Math.round(zoomValue));
-    if (persistClusterFeatures && cacheRef.current.isCovered(normalizedZoom, bbox)) {
+    const normalizedZoom = Math.max(0, Math.floor(zoomValue));
+    const tileRequest = useTileClusters
+      ? getTileRequestForBounds(bbox, normalizedZoom)
+      : null;
+    const coverageBbox = tileRequest?.bbox ?? bbox;
+    if (
+      persistClusterFeatures &&
+      cacheRef.current.isCovered(normalizedZoom, coverageBbox)
+    ) {
       const source = map.current.getSource("lostPetsJson") as
         | maptilersdk.GeoJSONSource
         | undefined;
@@ -130,50 +157,70 @@ export default function MapView({
       }
       return;
     }
-    const clustersUrl = makeClustersUrl(bboxString, normalizedZoom);
-    if (!clustersUrl) {
+    const requestKey = tileRequest
+      ? `tile:${tileRequest.key}`
+      : `bbox:${bboxString}:${normalizedZoom}`;
+    if (inFlightRequestKeyRef.current === requestKey) {
       return;
     }
-    const res = await fetch(clustersUrl);
-    if (!res.ok) {
-      return;
-    }
-    const text = await res.text();
-    if (!text) {
-      return;
-    }
-    let geojson: unknown;
+    inFlightRequestKeyRef.current = requestKey;
     try {
-      geojson = JSON.parse(text);
-    } catch {
-      return;
-    }
-    if (requestId !== clusterRequestIdRef.current) {
-      return;
-    }
-    const source = map.current.getSource("lostPetsJson") as
-      | maptilersdk.GeoJSONSource
-      | undefined;
-    if (!source) {
-      return;
-    }
+      const clustersUrl = tileRequest
+        ? makeTileClustersUrl(
+            tileRequest.z,
+            tileRequest.x,
+            tileRequest.y,
+            tileRequest.buffer
+          )
+        : makeClustersUrl(bboxString, normalizedZoom);
+      if (!clustersUrl) {
+        return;
+      }
+      const res = await fetch(clustersUrl);
+      if (!res.ok) {
+        return;
+      }
+      const text = await res.text();
+      if (!text) {
+        return;
+      }
+      let geojson: unknown;
+      try {
+        geojson = JSON.parse(text);
+      } catch {
+        return;
+      }
+      if (requestId !== clusterRequestIdRef.current) {
+        return;
+      }
+      const source = map.current.getSource("lostPetsJson") as
+        | maptilersdk.GeoJSONSource
+        | undefined;
+      if (!source) {
+        return;
+      }
 
-    const incoming = geojson as GeoJSONData;
-    if (persistClusterFeatures) {
-      cacheRef.current.addCoverage(normalizedZoom, bbox);
-    }
-    if (
-      persistClusterFeatures &&
-      incoming.type === "FeatureCollection" &&
-      Array.isArray(incoming.features)
-    ) {
-      source.setData(
-        cacheRef.current.upsertFeatures(normalizedZoom, incoming.features)
-      );
-      return;
-    }
+      const incoming = geojson as GeoJSONData;
+      if (persistClusterFeatures) {
+        cacheRef.current.addCoverage(normalizedZoom, coverageBbox);
+      }
+      if (
+        persistClusterFeatures &&
+        incoming.type === "FeatureCollection" &&
+        Array.isArray(incoming.features)
+      ) {
+        source.setData(
+          cacheRef.current.upsertFeatures(normalizedZoom, incoming.features)
+        );
+        return;
+      }
 
-    source.setData(incoming);
+      source.setData(incoming);
+    } finally {
+      if (inFlightRequestKeyRef.current === requestKey) {
+        inFlightRequestKeyRef.current = null;
+      }
+    }
   };
 
   const triggerReverseGeocode = (lng: number, lat: number) => {
@@ -309,9 +356,6 @@ export default function MapView({
           type: "FeatureCollection",
           features: [],
         },
-        cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 50,
       });
 
       map.current.addLayer({
@@ -565,27 +609,24 @@ export default function MapView({
         if (!clusterFeature || clusterFeature.geometry.type !== "Point") {
           return;
         }
-        const source = map.current.getSource(
-          "lostPetsJson"
-        ) as maptilersdk.GeoJSONSource | null;
-        const clusterId = clusterFeature.properties?.cluster_id;
-        if (!source || typeof clusterId !== "number") {
-          return;
-        }
-        void source
-          .getClusterExpansionZoom(clusterId)
-          .then((nextZoom) => {
-            if (!map.current) {
-              return;
-            }
-            const coords = (clusterFeature.geometry as Point)
-              .coordinates as [number, number];
-            map.current.easeTo({
-              center: coords,
-              zoom: nextZoom,
-            });
-          })
-          .catch(() => {});
+        const clusterProps = clusterFeature.properties ?? {};
+        const expansionZoomRaw = (clusterProps as { expansion_zoom?: number })
+          .expansion_zoom;
+        const currentZoom = map.current.getZoom();
+        const targetZoom =
+          typeof expansionZoomRaw === "number"
+            ? expansionZoomRaw
+            : currentZoom + 2;
+        const nextZoom = Math.min(
+          Math.max(targetZoom, currentZoom + 1),
+          map.current.getMaxZoom()
+        );
+        const coords = (clusterFeature.geometry as Point)
+          .coordinates as [number, number];
+        map.current.easeTo({
+          center: coords,
+          zoom: nextZoom,
+        });
       });
 
       map.current.on("click", "unclustered-point", (event) => {
@@ -759,16 +800,28 @@ export default function MapView({
       if (!sourcesReadyRef.current) {
         return;
       }
-      await refreshClusters();
-      const center = map.current.getCenter();
-      if (center && enableCenterMarker) {
-        triggerReverseGeocode(center.lng, center.lat);
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
       }
+      refreshTimeoutRef.current = setTimeout(async () => {
+        if (!map.current) {
+          return;
+        }
+        await refreshClusters();
+        const center = map.current.getCenter();
+        if (center && enableCenterMarker) {
+          triggerReverseGeocode(center.lng, center.lat);
+        }
+      }, CLUSTER_REFRESH_DEBOUNCE_MS);
     };
 
     map.current.on("moveend", handleRefresh);
     return () => {
       map.current?.off("moveend", handleRefresh);
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
     };
   }, []);
 

@@ -19,6 +19,7 @@ export interface ClusterProperties {
   cluster_id: number;
   point_count: number;
   point_count_abbreviated: string;
+  expansion_zoom?: number;
 }
 
 export interface Feature<T = any> {

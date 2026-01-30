@@ -63,7 +63,7 @@ export default async function SearchPage({
           ]}
         />
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+        <section className=" w-full ">
           <div className="space-y-4">
             <SearchMapPanel
               title={s("map.title")}
