@@ -60,6 +60,14 @@
   },
   "Common": {
     "comingSoon": "Coming soon",
-    "backHome": "Back home"
+    "backHome": "Back home",
+    "titles": {
+      "report": "Report lost pet",
+      "scan": "Scan found pet",
+      "search": "Live map",
+      "verify": "Email verification",
+      "owner": "Manage listing",
+      "petDetails": "Pet details"
+    }
   }
 }
