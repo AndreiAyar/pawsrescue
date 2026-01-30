@@ -60,6 +60,14 @@
   },
   "Common": {
     "comingSoon": "In curand",
-    "backHome": "Inapoi acasa"
+    "backHome": "Inapoi acasa",
+    "titles": {
+      "report": "Raportare animal pierdut",
+      "scan": "Scaneaza animal gasit",
+      "search": "Harta live",
+      "verify": "Verificare email",
+      "owner": "Gestionare anunt",
+      "petDetails": "Detalii animal"
+    }
   }
 }
