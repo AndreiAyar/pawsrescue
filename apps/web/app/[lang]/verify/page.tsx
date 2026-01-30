@@ -7,8 +7,8 @@ export default async function VerifyPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const t = await getTranslations("Common");
-  const title = lang === "ro" ? "Verificare email" : "Email verification";
+  const t = await getTranslations({ locale: lang, namespace: "Common" });
+  const title = t("titles.verify");
 
   return (
     <main className="min-h-screen bg-[#f3f0e8] text-slate-900">

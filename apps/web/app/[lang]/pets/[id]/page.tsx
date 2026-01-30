@@ -7,8 +7,8 @@ export default async function PetDetailPage({
   params: Promise<{ lang: string; id: string }>;
 }) {
   const { lang, id } = await params;
-  const t = await getTranslations("Common");
-  const title = lang === "ro" ? "Detalii animal" : "Pet details";
+  const t = await getTranslations({ locale: lang, namespace: "Common" });
+  const title = t("titles.petDetails");
 
   return (
     <main className="min-h-screen bg-[#f3f0e8] text-slate-900">
