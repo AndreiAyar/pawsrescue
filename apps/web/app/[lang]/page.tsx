@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getMessages, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { LinkButton } from "@repo/ui/linkButton";
 
 const clusterDots = [
@@ -27,8 +27,8 @@ export default async function HomePage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const t = await getTranslations("Home");
-  const messages = await getMessages();
+  const t = await getTranslations({ locale: lang, namespace: "Home" });
+  const messages = (await import(`../../messages/${lang}.json`)).default;
 
   const recentItems = (messages as { Home?: { recentItems?: RecentItem[] } })
     ?.Home?.recentItems ?? [];
@@ -86,7 +86,7 @@ export default async function HomePage({
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white">
                 <CatFaceIcon className="h-4 w-4 text-amber-700" />
               </span>
-              Pet friendly map
+              {t("hero.kicker")}
             </div>
             <h1 className="font-display text-4xl font-bold leading-tight sm:text-5xl">
               {t("hero.title")}
