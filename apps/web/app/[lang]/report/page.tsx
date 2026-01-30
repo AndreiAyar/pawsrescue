@@ -7,8 +7,8 @@ export default async function ReportPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const t = await getTranslations("Common");
-  const title = lang === "ro" ? "Raportare animal pierdut" : "Report lost pet";
+  const t = await getTranslations({ locale: lang, namespace: "Common" });
+  const title = t("titles.report");
 
   return (
     <main className="min-h-screen bg-[#f3f0e8] text-slate-900">

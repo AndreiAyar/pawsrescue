@@ -7,8 +7,8 @@ export default async function ScanPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const t = await getTranslations("Common");
-  const title = lang === "ro" ? "Scaneaza animal gasit" : "Scan found pet";
+  const t = await getTranslations({ locale: lang, namespace: "Common" });
+  const title = t("titles.scan");
 
   return (
     <main className="min-h-screen bg-[#f3f0e8] text-slate-900">
