@@ -49,35 +49,35 @@ async function proxy(request: Request, params?: { path?: string[] }) {
 
 export async function GET(
   request: Request,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(request, params);
+  return proxy(request, await params);
 }
 
 export async function POST(
   request: Request,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(request, params);
+  return proxy(request, await params);
 }
 
 export async function PUT(
   request: Request,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(request, params);
+  return proxy(request, await params);
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(request, params);
+  return proxy(request, await params);
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxy(request, params);
+  return proxy(request, await params);
 }

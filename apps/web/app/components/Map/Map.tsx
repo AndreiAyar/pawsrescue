@@ -7,31 +7,13 @@ import "@maptiler/sdk/dist/maptiler-sdk.css";
 import { GeocodingControl } from "@maptiler/geocoding-control/react";
 import { createMapLibreGlMapController } from "@maptiler/geocoding-control/maplibregl-controller";
 import "@maptiler/geocoding-control/style.css";
+import { createClusterCache } from "./clusterCache";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
 const apiBase = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
 const isProd = process.env.NODE_ENV === "production";
 const BBOX_PRECISION = 1e5;
 const BBOX_PADDING_FACTOR = 0.2;
-
-type BBox = [number, number, number, number];
-
-const floorToPrecision = (value: number) =>
-  Math.floor(value * BBOX_PRECISION) / BBOX_PRECISION;
-const ceilToPrecision = (value: number) =>
-  Math.ceil(value * BBOX_PRECISION) / BBOX_PRECISION;
-const bboxContains = (outer: BBox, inner: BBox) =>
-  outer[0] <= inner[0] &&
-  outer[1] <= inner[1] &&
-  outer[2] >= inner[2] &&
-  outer[3] >= inner[3];
-const bboxOverlaps = (a: BBox, b: BBox) =>
-  a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
-const mergeBbox = (a: BBox, b: BBox): BBox => [
-  Math.min(a[0], b[0]),
-  Math.min(a[1], b[1]),
-  Math.max(a[2], b[2]),
-  Math.max(a[3], b[3]),
-];
+const MAX_CACHED_COVERAGE_PER_ZOOM = 64;
 
 type MapProps = {
   className?: string;
@@ -90,12 +72,19 @@ export default function MapView({
   const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clusterRequestIdRef = useRef(0);
   const pendingClusterRefreshRef = useRef(false);
-  const persistedFeaturesRef = useRef(
-    new Map<number | string, Feature<Geometry>>()
+  const skipNextMoveendRef = useRef(false);
+  const cacheRef = useRef(
+    createClusterCache({
+      precision: BBOX_PRECISION,
+      paddingFactor: BBOX_PADDING_FACTOR,
+      maxCoveragePerZoom: MAX_CACHED_COVERAGE_PER_ZOOM,
+      maxFeatureCount: maxPersistedClusterFeatures,
+    })
   );
-  const persistedFeatureOrderRef = useRef<Array<number | string>>([]);
-  const cachedCoverageRef = useRef(new Map<number, BBox[]>());
-  const maxCachedCoveragePerZoom = 128;
+
+  useEffect(() => {
+    cacheRef.current.setMaxFeatureCount(maxPersistedClusterFeatures);
+  }, [maxPersistedClusterFeatures]);
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -106,70 +95,6 @@ export default function MapView({
     }
     markerRef.current?.setLngLat([lng, lat]);
     setCurrentPosition({ lng, lat });
-  };
-
-  const getBounds = () => {
-    const bounds = map?.current?.getBounds();
-    if (!bounds) {
-      return;
-    }
-
-    // Convert bounds to [west, south, east, north]
-    const raw = bounds.toArray().flat();
-    const width = raw[2] - raw[0];
-    const height = raw[3] - raw[1];
-    const padX = width * BBOX_PADDING_FACTOR;
-    const padY = height * BBOX_PADDING_FACTOR;
-    const bbox: BBox = [
-      floorToPrecision(raw[0] - padX),
-      floorToPrecision(raw[1] - padY),
-      ceilToPrecision(raw[2] + padX),
-      ceilToPrecision(raw[3] + padY),
-    ];
-
-    // Ask your backend only for the visible area
-    return { bbox, bboxString: bbox.join(",") };
-  };
-
-  const isBboxCached = (zoomLevel: number, bbox: BBox) => {
-    if (!persistClusterFeatures) {
-      return false;
-    }
-    const cached = cachedCoverageRef.current.get(zoomLevel);
-    if (!cached || cached.length === 0) {
-      return false;
-    }
-    return cached.some((entry) => bboxContains(entry, bbox));
-  };
-
-  const addBboxCoverage = (zoomLevel: number, bbox: BBox) => {
-    if (!persistClusterFeatures) {
-      return;
-    }
-    const cache = cachedCoverageRef.current;
-    const list = cache.get(zoomLevel) ?? [];
-    let merged = bbox;
-    let index = 0;
-    while (index < list.length) {
-      if (bboxOverlaps(list[index], merged)) {
-        merged = mergeBbox(list[index], merged);
-        list.splice(index, 1);
-        index = 0;
-        continue;
-      }
-      index += 1;
-    }
-    list.push(merged);
-
-    if (list.length > maxCachedCoveragePerZoom) {
-      list.sort(
-        (a, b) =>
-          (b[2] - b[0]) * (b[3] - b[1]) -
-          (a[2] - a[0]) * (a[3] - a[1])
-      );
-      list.length = maxCachedCoveragePerZoom;
-    }
-    cache.set(zoomLevel, list);
   };
 
   const makeClustersUrl = (bbox: string, zoomLevel: number) => {
@@ -190,13 +115,19 @@ export default function MapView({
     }
     const requestId = ++clusterRequestIdRef.current;
     const zoomValue = zoomLevel ?? map.current.getZoom() ?? 0;
-    const bounds = getBounds();
+    const bounds = cacheRef.current.getBounds(map.current);
     if (!bounds) {
       return;
     }
     const { bbox, bboxString } = bounds;
     const normalizedZoom = Math.max(0, Math.round(zoomValue));
-    if (isBboxCached(normalizedZoom, bbox)) {
+    if (persistClusterFeatures && cacheRef.current.isCovered(normalizedZoom, bbox)) {
+      const source = map.current.getSource("lostPetsJson") as
+        | maptilersdk.GeoJSONSource
+        | undefined;
+      if (source) {
+        cacheRef.current.applyToSource(normalizedZoom, source);
+      }
       return;
     }
     const clustersUrl = makeClustersUrl(bboxString, normalizedZoom);
@@ -228,48 +159,17 @@ export default function MapView({
     }
 
     const incoming = geojson as GeoJSONData;
-    addBboxCoverage(normalizedZoom, bbox);
+    if (persistClusterFeatures) {
+      cacheRef.current.addCoverage(normalizedZoom, bbox);
+    }
     if (
       persistClusterFeatures &&
       incoming.type === "FeatureCollection" &&
       Array.isArray(incoming.features)
     ) {
-      for (const feature of incoming.features) {
-        if (!feature || feature.type !== "Feature") {
-          continue;
-        }
-        const properties = feature.properties as {
-          id?: number | string;
-          point_count?: number;
-          cluster?: boolean;
-        } | null;
-        if (!properties || properties.point_count || properties.cluster) {
-          continue;
-        }
-        const featureId = properties.id;
-        if (featureId === undefined || featureId === null) {
-          continue;
-        }
-        if (!persistedFeaturesRef.current.has(featureId)) {
-          persistedFeatureOrderRef.current.push(featureId);
-        }
-        persistedFeaturesRef.current.set(featureId, feature);
-      }
-
-      while (
-        persistedFeatureOrderRef.current.length > maxPersistedClusterFeatures
-      ) {
-        const oldest = persistedFeatureOrderRef.current.shift();
-        if (oldest !== undefined) {
-          persistedFeaturesRef.current.delete(oldest);
-        }
-      }
-
-      const merged: FeatureCollection<Geometry> = {
-        type: "FeatureCollection",
-        features: Array.from(persistedFeaturesRef.current.values()),
-      };
-      source.setData(merged);
+      source.setData(
+        cacheRef.current.upsertFeatures(normalizedZoom, incoming.features)
+      );
       return;
     }
 
@@ -775,6 +675,10 @@ export default function MapView({
       sourcesReadyRef.current = true;
       if (pendingClusterRefreshRef.current) {
         pendingClusterRefreshRef.current = false;
+        skipNextMoveendRef.current = true;
+        void refreshClusters();
+      } else {
+        skipNextMoveendRef.current = true;
         void refreshClusters();
       }
     };
@@ -846,6 +750,10 @@ export default function MapView({
 
     const handleRefresh = async () => {
       if (!map.current) {
+        return;
+      }
+      if (skipNextMoveendRef.current) {
+        skipNextMoveendRef.current = false;
         return;
       }
       if (!sourcesReadyRef.current) {
