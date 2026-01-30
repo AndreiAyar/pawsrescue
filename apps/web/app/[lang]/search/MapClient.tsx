@@ -31,6 +31,7 @@ export default function MapClient({
     "granted" | "denied" | "prompt" | "unknown"
   >("unknown");
   const [locateRequestId, setLocateRequestId] = useState(0);
+  const [clustersRequestId, setClustersRequestId] = useState(0);
   const deniedRef = useRef<HTMLDivElement | null>(null);
   const [highlightDenied, setHighlightDenied] = useState(false);
   const [userLocateRequestId, setUserLocateRequestId] = useState(0);
@@ -60,6 +61,8 @@ export default function MapClient({
           setPermissionState(nextState);
           if (nextState !== "denied") {
             setLocateRequestId((prev) => prev + 1);
+          } else {
+            setClustersRequestId((prev) => prev + 1);
           }
 
           status.onchange = () => {
@@ -71,6 +74,8 @@ export default function MapClient({
               setPermissionState(updated);
               if (updated !== "denied") {
                 setLocateRequestId((prev) => prev + 1);
+              } else {
+                setClustersRequestId((prev) => prev + 1);
               }
             }
           };
@@ -114,6 +119,7 @@ export default function MapClient({
           locatingLabel={locatingLabel}
           locateRequestId={locateRequestId}
           manualLocateRequestId={manualLocateRequestId}
+          clustersRequestId={clustersRequestId}
           showLocateButton={showLocateButton}
           onLocateRequest={() => {
             setUserLocateRequestId((prev) => prev + 1);

@@ -21,6 +21,7 @@ type MapProps = {
   locatingLabel?: string;
   locateRequestId?: number;
   manualLocateRequestId?: number;
+  clustersRequestId?: number;
   onLocateRequest?: () => void;
   onLocateError?: (error: GeolocationPositionError) => void;
   showLocateButton?: boolean;
@@ -33,6 +34,7 @@ export default function Map({
   locatingLabel = "Locating...",
   locateRequestId,
   manualLocateRequestId,
+  clustersRequestId,
   onLocateRequest,
   onLocateError,
   showLocateButton = true,
@@ -53,8 +55,7 @@ export default function Map({
   const sourcesReadyRef = useRef(false);
   const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clusterRequestIdRef = useRef(0);
-  const initialClustersLoadedRef = useRef(false);
-  const pendingRefreshRef = useRef(false);
+  const pendingClusterRefreshRef = useRef(false);
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -88,6 +89,10 @@ export default function Map({
 
   const refreshClusters = async (zoomLevel?: number) => {
     if (!map.current) {
+      return;
+    }
+    if (!sourcesReadyRef.current) {
+      pendingClusterRefreshRef.current = true;
       return;
     }
     const requestId = ++clusterRequestIdRef.current;
@@ -591,15 +596,6 @@ export default function Map({
         }
       });
 
-      void (async () => {
-        await refreshClusters();
-        initialClustersLoadedRef.current = true;
-        if (pendingRefreshRef.current) {
-          pendingRefreshRef.current = false;
-          await refreshClusters();
-        }
-      })();
-
       if (ringIntervalRef.current) {
         clearInterval(ringIntervalRef.current);
       }
@@ -613,6 +609,10 @@ export default function Map({
       }, 60);
 
       sourcesReadyRef.current = true;
+      if (pendingClusterRefreshRef.current) {
+        pendingClusterRefreshRef.current = false;
+        void refreshClusters();
+      }
     };
 
     if (map.current.isStyleLoaded()) {
@@ -664,6 +664,9 @@ export default function Map({
       },
       (error) => {
         onLocateError?.(error);
+        if (clusterRequestIdRef.current === 0) {
+          void refreshClusters();
+        }
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -679,8 +682,7 @@ export default function Map({
       if (!map.current) {
         return;
       }
-      if (!initialClustersLoadedRef.current) {
-        pendingRefreshRef.current = true;
+      if (!sourcesReadyRef.current) {
         return;
       }
       await refreshClusters();
@@ -697,7 +699,7 @@ export default function Map({
   }, []);
 
   useEffect(() => {
-    if (typeof locateRequestId !== "number") {
+    if (typeof locateRequestId !== "number" || locateRequestId === 0) {
       return;
     }
     handleLocate(false);
@@ -709,6 +711,13 @@ export default function Map({
     }
     handleLocate(true);
   }, [manualLocateRequestId]);
+
+  useEffect(() => {
+    if (typeof clustersRequestId !== "number" || clustersRequestId === 0) {
+      return;
+    }
+    void refreshClusters();
+  }, [clustersRequestId]);
 
   return (
     <div className={`relative h-full w-full ${className}`}>
