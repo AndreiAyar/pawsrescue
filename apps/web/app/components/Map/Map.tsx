@@ -43,6 +43,7 @@ export default function Map({
   const intialPosRef = useRef({ lang: 26.102, lat: 44.435 });
   const geocodeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const geocodeAbortRef = useRef<AbortController | null>(null);
+  const sourcesReadyRef = useRef(false);
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -129,6 +130,7 @@ export default function Map({
       }
     }, 350);
   };
+
   useEffect(() => {
     if (map.current) return; // stops map from intializing more than once
     if (!mapContainer.current) return; // ensure container is available
@@ -160,15 +162,6 @@ export default function Map({
 
       map.current.on("move", () => {
         const lngLat = map.current?.getCenter();
-        const bounds = map.current?.getBounds();
-
-        console.log(
-          "map bounds",
-          bounds?.getWest(),
-          bounds?.getSouth(),
-          bounds?.getEast(),
-          bounds?.getSouth()
-        );
         if (!lngLat) {
           return;
         }
@@ -186,36 +179,38 @@ export default function Map({
   }, [intialPosRef?.current?.lang, intialPosRef?.current?.lat]);
 
   useEffect(() => {
-    if (!map || !map?.current) {
+    if (!map.current) {
       return;
     }
 
-    map?.current?.on("load", function () {
-      // add a clustered GeoJSON source for a sample set of earthquakes
+    const setupSources = () => {
+      if (!map.current || sourcesReadyRef.current) {
+        return;
+      }
+      if (map.current.getSource("lostPetsJson")) {
+        sourcesReadyRef.current = true;
+        return;
+      }
+
       const clustersUrl = getClustersUrl(zoom);
       if (!clustersUrl) {
         return;
       }
 
-      map?.current?.addSource("lostPetsJson", {
+      map.current.addSource("lostPetsJson", {
         type: "geojson",
         data: clustersUrl,
         cluster: true,
-        clusterMaxZoom: 14, // Max zoom to cluster points on
-        clusterRadius: 50, // Radius of each cluster when clustering points (defaults to 50)
+        clusterMaxZoom: 14,
+        clusterRadius: 50,
       });
 
-      map?.current?.addLayer({
+      map.current.addLayer({
         id: "clusters",
         type: "circle",
         source: "lostPetsJson",
         filter: ["has", "point_count"],
         paint: {
-          // Use step expressions (https://docs.maptiler.com/gl-style-specification/expressions/#step)
-          // with three steps to implement three types of circles:
-          //   * Blue, 20px circles when point count is less than 100
-          //   * Yellow, 30px circles when point count is between 100 and 750
-          //   * Pink, 40px circles when point count is greater than or equal to 750
           "circle-color": [
             "step",
             ["get", "point_count"],
@@ -225,19 +220,11 @@ export default function Map({
             750,
             "#f28cb1",
           ],
-          "circle-radius": [
-            "step",
-            ["get", "point_count"],
-            20,
-            100,
-            30,
-            750,
-            40,
-          ],
+          "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
         },
       });
 
-      map?.current?.addLayer({
+      map.current.addLayer({
         id: "cluster-count",
         type: "symbol",
         source: "lostPetsJson",
@@ -249,25 +236,214 @@ export default function Map({
         },
       });
 
-      map?.current?.addLayer({
+      const addEmojiIcon = (id: string, emoji: string, bg: string) => {
+        if (!map.current || map.current.hasImage(id)) {
+          return;
+        }
+        const size = 48;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          return;
+        }
+
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+        ctx.fillStyle = bg;
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#f59e0b";
+        ctx.stroke();
+
+        ctx.font = "22px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(emoji, size / 2, size / 2 + 1);
+
+        const image = new Image();
+        image.src = canvas.toDataURL();
+        image.onload = () => {
+          if (!map.current || map.current.hasImage(id)) {
+            return;
+          }
+          map.current.addImage(id, image);
+        };
+      };
+
+      addEmojiIcon("pet-cat", "🐱", "#fef3c7");
+      addEmojiIcon("pet-dog", "🐶", "#fde2e2");
+      addEmojiIcon("pet-bird", "🐦", "#e0f2fe");
+      addEmojiIcon("pet-default", "🐾", "#fef9c3");
+
+      map.current.addLayer({
         id: "unclustered-point",
         type: "circle",
         source: "lostPetsJson",
         filter: ["!", ["has", "point_count"]],
         paint: {
-          "circle-color": "#11b4da",
-          "circle-radius": 4,
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "#fff",
+          "circle-color": "#fff7ed",
+          "circle-radius": 18,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#f59e0b",
         },
       });
-    });
+
+      map.current.addLayer({
+        id: "unclustered-avatar",
+        type: "symbol",
+        source: "lostPetsJson",
+        filter: ["!", ["has", "point_count"]],
+        layout: {
+          "icon-image": [
+            "match",
+            ["get", "type"],
+            "cat",
+            "pet-cat",
+            "dog",
+            "pet-dog",
+            "bird",
+            "pet-bird",
+            "pet-default",
+          ],
+          "icon-size": 0.85,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+      });
+
+      map.current.addLayer({
+        id: "unclustered-label",
+        type: "symbol",
+        source: "lostPetsJson",
+        filter: ["!", ["has", "point_count"]],
+        layout: {
+          "text-field": ["get", "name"],
+          "text-size": 11,
+          "text-offset": [0, 1.5],
+          "text-anchor": "top",
+          "text-allow-overlap": false,
+        },
+        paint: {
+          "text-color": "#0f172a",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 1,
+        },
+      });
+
+      map.current.on("click", "clusters", (event) => {
+        if (!map.current) {
+          return;
+        }
+        const features = map.current.queryRenderedFeatures(event.point, {
+          layers: ["clusters"],
+        });
+        const clusterFeature = features[0];
+        if (!clusterFeature || clusterFeature.geometry.type !== "Point") {
+          return;
+        }
+        const source = map.current.getSource(
+          "lostPetsJson"
+        ) as maptilersdk.GeoJSONSource | null;
+        const clusterId = clusterFeature.properties?.cluster_id;
+        if (!source || typeof clusterId !== "number") {
+          return;
+        }
+        source.getClusterExpansionZoom(clusterId, (error, nextZoom) => {
+          if (error || !map.current) {
+            return;
+          }
+          map.current.easeTo({
+            center: clusterFeature.geometry.coordinates as [number, number],
+            zoom: nextZoom,
+          });
+        });
+      });
+
+      map.current.on("click", "unclustered-point", (event) => {
+        if (!map.current || !event.features?.length) {
+          return;
+        }
+        const feature = event.features[0];
+        if (!feature || feature.geometry.type !== "Point") {
+          return;
+        }
+        const { name, type } = feature.properties ?? {};
+        const coords = feature.geometry.coordinates as [number, number];
+        const avatar =
+          type === "cat"
+            ? "🐱"
+            : type === "dog"
+              ? "🐶"
+              : type === "bird"
+                ? "🐦"
+                : "🐾";
+
+        const html = `
+          <div style="min-width:220px;border-radius:16px;border:1px solid #f1e5d3;background:#fffaf5;padding:12px 14px;font-family:inherit;box-shadow:0 18px 36px -24px rgba(15,23,42,0.4);">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:40px;height:40px;border-radius:999px;background:#fde68a;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 8px 18px -10px rgba(15,23,42,0.35);border:1px solid #f59e0b;">
+                ${avatar}
+              </div>
+              <div>
+                <div style="font-weight:700;font-size:15px;color:#0f172a;">
+                  ${name ?? "Lost pet"}
+                </div>
+                <div style="font-size:11px;color:#8a7a63;text-transform:uppercase;letter-spacing:0.08em;">
+                  ${type ?? "unknown"}
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+              <span style="font-size:11px;color:#7c6f56;background:#fef3c7;border-radius:999px;padding:4px 8px;border:1px solid #f7e2a7;letter-spacing:0.06em;text-transform:uppercase;">
+                tap for details
+              </span>
+            </div>
+          </div>
+        `;
+
+        new maptilersdk.Popup({ closeButton: true, closeOnClick: true })
+          .setLngLat(coords)
+          .setHTML(html)
+          .addTo(map.current);
+      });
+
+      map.current.on("mouseenter", "clusters", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "pointer";
+        }
+      });
+      map.current.on("mouseleave", "clusters", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "";
+        }
+      });
+      map.current.on("mouseenter", "unclustered-point", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "pointer";
+        }
+      });
+      map.current.on("mouseleave", "unclustered-point", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "";
+        }
+      });
+
+      sourcesReadyRef.current = true;
+    };
+
+    if (map.current.isStyleLoaded()) {
+      setupSources();
+    } else {
+      map.current.once("load", setupSources);
+    }
 
     const center = map.current?.getCenter();
     if (center) {
       triggerReverseGeocode(center.lng, center.lat);
     }
-  }, [currentPosition]);
+  }, []);
 
   const handleLocate = (manual = false) => {
     if (!map.current || !navigator.geolocation) {

@@ -28,6 +28,7 @@ export class LostPetsController {
 
   @Post()
   create(@Body() lostCat: LostPetDTO) {
+    console.log('l',lostCat)
     return this.lostPetsService.create(lostCat);
   }
 }

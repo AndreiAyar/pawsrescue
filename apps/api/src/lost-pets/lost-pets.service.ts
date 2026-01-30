@@ -19,15 +19,23 @@ export class LostPetsService {
     private readonly em: EntityManager,
   ) {}
 
-  async create(_pet: LostPetDTO) {
-    // const createdPet = this.lostPetsRepository.create({
-    //   name: pet.name,
-    //   location: pet.location,
-    // });
-    // await this.em.persistAndFlush(createdPet);
-    // return createdPet;
+  async create(pet: LostPetDTO) {
+    const createdPet = this.lostPetsRepository.create({
+      name: pet.name,
+      latitude: pet.latitude,
+      longitude: pet.longitude,
+      type: pet.type,
+      email: '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await this.em.persistAndFlush(createdPet);
+    return createdPet;
   }
-  async getClusters(bboxString: string, zoomString: string): Promise<ClusteringResult> {
+  async getClusters(
+    bboxString: string,
+    zoomString: string,
+  ): Promise<ClusteringResult> {
     const bbox = bboxString.split(',').map(Number);
     const zoom = Number(zoomString);
 
