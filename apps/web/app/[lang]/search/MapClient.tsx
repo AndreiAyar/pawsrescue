@@ -11,6 +11,8 @@ type MapClientProps = {
   locatingLabel?: string;
   locationDenied?: string;
   locationHint?: string;
+  manualLocateRequestId?: number;
+  showLocateButton?: boolean;
 };
 
 export default function MapClient({
@@ -21,6 +23,8 @@ export default function MapClient({
   locatingLabel = "Locating...",
   locationDenied = "Location access is off.",
   locationHint = "Enable it in Chrome to use GPS.",
+  manualLocateRequestId,
+  showLocateButton = true,
 }: MapClientProps) {
   const [location, setLocation] = useState<string>("");
   const [permissionState, setPermissionState] = useState<
@@ -109,6 +113,8 @@ export default function MapClient({
           locateLabel={locateLabel}
           locatingLabel={locatingLabel}
           locateRequestId={locateRequestId}
+          manualLocateRequestId={manualLocateRequestId}
+          showLocateButton={showLocateButton}
           onLocateRequest={() => {
             setUserLocateRequestId((prev) => prev + 1);
           }}

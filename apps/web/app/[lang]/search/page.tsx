@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import MapClient from "./MapClient";
+import SearchMapPanel from "./SearchMapPanel";
 
 type RecentItem = {
   name: string;
@@ -74,25 +74,16 @@ export default async function SearchPage({
 
         <section className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
-            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white/80 shadow-[0_22px_60px_-38px_rgba(31,41,55,0.45)]">
-              <div className="flex items-center justify-between border-b border-slate-200/70 bg-white/70 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                <span>{s("map.title")}</span>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] text-emerald-800">
-                  {s("map.badge")}
-                </span>
-              </div>
-              <div className="p-4">
-                <MapClient
-                  mapHeightClassName="h-[480px] sm:h-[600px]"
-                  locationLabel={s("location.label")}
-                  locationPlaceholder={s("location.placeholder")}
-                  locateLabel={s("location.locate")}
-                  locatingLabel={s("location.locating")}
-                  locationDenied={s("location.denied")}
-                  locationHint={s("location.hint")}
-                />
-              </div>
-            </div>
+            <SearchMapPanel
+              title={s("map.title")}
+              badge={s("map.badge")}
+              locateLabel={s("location.locate")}
+              locatingLabel={s("location.locating")}
+              locationLabel={s("location.label")}
+              locationPlaceholder={s("location.placeholder")}
+              locationDenied={s("location.denied")}
+              locationHint={s("location.hint")}
+            />
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm shadow-[0_16px_28px_-24px_rgba(31,41,55,0.4)]">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

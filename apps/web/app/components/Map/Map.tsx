@@ -19,7 +19,9 @@ type MapProps = {
   locateLabel?: string;
   locatingLabel?: string;
   locateRequestId?: number;
+  manualLocateRequestId?: number;
   onLocateRequest?: () => void;
+  showLocateButton?: boolean;
 };
 
 export default function Map({
@@ -28,7 +30,9 @@ export default function Map({
   locateLabel = "Locate me",
   locatingLabel = "Locating...",
   locateRequestId,
+  manualLocateRequestId,
   onLocateRequest,
+  showLocateButton = true,
 }: MapProps) {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
@@ -44,6 +48,7 @@ export default function Map({
   const geocodeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const geocodeAbortRef = useRef<AbortController | null>(null);
   const sourcesReadyRef = useRef(false);
+  const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -67,6 +72,9 @@ export default function Map({
     const bbox = getBounds();
     if (!bbox) {
       return null;
+    }
+    if (!apiBase) {
+      return `/api/lost-pets/clusters?bbox=${bbox}&zoom=${zoomLevel}`;
     }
     return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${zoomLevel}`;
   };
@@ -272,10 +280,116 @@ export default function Map({
         };
       };
 
+      const addLabelPill = (id: string) => {
+        if (!map.current || map.current.hasImage(id)) {
+          return;
+        }
+        const width = 140;
+        const height = 36;
+        const radius = 16;
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          return;
+        }
+
+        ctx.fillStyle = "#fffaf5";
+        ctx.strokeStyle = "#f1e5d3";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(radius, 0);
+        ctx.lineTo(width - radius, 0);
+        ctx.quadraticCurveTo(width, 0, width, radius);
+        ctx.lineTo(width, height - radius);
+        ctx.quadraticCurveTo(width, height, width - radius, height);
+        ctx.lineTo(radius, height);
+        ctx.quadraticCurveTo(0, height, 0, height - radius);
+        ctx.lineTo(0, radius);
+        ctx.quadraticCurveTo(0, 0, radius, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        const image = new Image();
+        image.src = canvas.toDataURL();
+        image.onload = () => {
+          if (!map.current || map.current.hasImage(id)) {
+            return;
+          }
+          map.current.addImage(id, image);
+        };
+      };
+
+      const addRingImage = (id: string) => {
+        if (!map.current || map.current.hasImage(id)) {
+          return;
+        }
+        const size = 72;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          return;
+        }
+        const center = size / 2;
+        const radius = size / 2 - 6;
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = "rgba(245, 158, 11, 0.35)";
+        ctx.beginPath();
+        ctx.arc(center, center, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = "rgba(245, 158, 11, 0.85)";
+        ctx.beginPath();
+        ctx.arc(center, center, radius, Math.PI * 0.1, Math.PI * 0.5);
+        ctx.stroke();
+
+        ctx.strokeStyle = "rgba(245, 158, 11, 0.65)";
+        ctx.beginPath();
+        ctx.arc(center, center, radius, Math.PI * 1.0, Math.PI * 1.25);
+        ctx.stroke();
+
+        ctx.strokeStyle = "rgba(245, 158, 11, 0.5)";
+        ctx.beginPath();
+        ctx.arc(center, center, radius, Math.PI * 1.55, Math.PI * 1.75);
+        ctx.stroke();
+
+        const image = new Image();
+        image.src = canvas.toDataURL();
+        image.onload = () => {
+          if (!map.current || map.current.hasImage(id)) {
+            return;
+          }
+          map.current.addImage(id, image);
+        };
+      };
+
       addEmojiIcon("pet-cat", "🐱", "#fef3c7");
       addEmojiIcon("pet-dog", "🐶", "#fde2e2");
       addEmojiIcon("pet-bird", "🐦", "#e0f2fe");
       addEmojiIcon("pet-default", "🐾", "#fef9c3");
+      addLabelPill("pet-label-pill");
+      addRingImage("pet-ring");
+
+      map.current.addLayer({
+        id: "unclustered-ring",
+        type: "symbol",
+        source: "lostPetsJson",
+        filter: ["!", ["has", "point_count"]],
+        layout: {
+          "icon-image": "pet-ring",
+          "icon-size": 0.9,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-rotate": 0,
+        },
+      });
 
       map.current.addLayer({
         id: "unclustered-point",
@@ -319,16 +433,23 @@ export default function Map({
         source: "lostPetsJson",
         filter: ["!", ["has", "point_count"]],
         layout: {
+          "icon-image": "pet-label-pill",
+          "icon-text-fit": "both",
+          "icon-text-fit-padding": [6, 12, 6, 12],
+          "icon-allow-overlap": false,
+          "icon-anchor": "top",
+          "icon-offset": [0, 2.0],
           "text-field": ["get", "name"],
-          "text-size": 11,
-          "text-offset": [0, 1.5],
+          "text-size": 12,
+          "text-offset": [0, 2.0],
           "text-anchor": "top",
           "text-allow-overlap": false,
         },
         paint: {
-          "text-color": "#0f172a",
+          "icon-opacity": 0.82,
+          "text-color": "#1f2937",
           "text-halo-color": "#ffffff",
-          "text-halo-width": 1,
+          "text-halo-width": 0.5,
         },
       });
 
@@ -430,6 +551,18 @@ export default function Map({
         }
       });
 
+      if (ringIntervalRef.current) {
+        clearInterval(ringIntervalRef.current);
+      }
+      ringIntervalRef.current = setInterval(() => {
+        if (!map.current) {
+          return;
+        }
+        const t = (performance.now() % 3000) / 3000;
+        const angle = t * 360;
+        map.current.setLayoutProperty("unclustered-ring", "icon-rotate", angle);
+      }, 60);
+
       sourcesReadyRef.current = true;
     };
 
@@ -443,6 +576,11 @@ export default function Map({
     if (center) {
       triggerReverseGeocode(center.lng, center.lat);
     }
+    return () => {
+      if (ringIntervalRef.current) {
+        clearInterval(ringIntervalRef.current);
+      }
+    };
   }, []);
 
   const handleLocate = (manual = false) => {
@@ -519,6 +657,13 @@ export default function Map({
     handleLocate(false);
   }, [locateRequestId]);
 
+  useEffect(() => {
+    if (typeof manualLocateRequestId !== "number") {
+      return;
+    }
+    handleLocate(true);
+  }, [manualLocateRequestId]);
+
   return (
     <div className={`relative h-full w-full ${className}`}>
       <div className="geocoding absolute left-4 top-4 z-10 flex items-start gap-2">
@@ -544,16 +689,18 @@ export default function Map({
             }}
           />
         )}
-        <button
-          type="button"
-          onClick={() => handleLocate(true)}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
-          aria-label={locateLabel}
-          disabled={locating}
-        >
-          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          {locating ? locatingLabel : locateLabel}
-        </button>
+        {showLocateButton && (
+          <button
+            type="button"
+            onClick={() => handleLocate(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
+            aria-label={locateLabel}
+            disabled={locating}
+          >
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            {locating ? locatingLabel : locateLabel}
+          </button>
+        )}
       </div>
       <div ref={mapContainer} className="map absolute h-full w-full" />
     </div>
