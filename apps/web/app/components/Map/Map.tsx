@@ -10,6 +10,28 @@ import "@maptiler/geocoding-control/style.css";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
 const apiBase = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
 const isProd = process.env.NODE_ENV === "production";
+const BBOX_PRECISION = 1e5;
+const BBOX_PADDING_FACTOR = 0.2;
+
+type BBox = [number, number, number, number];
+
+const floorToPrecision = (value: number) =>
+  Math.floor(value * BBOX_PRECISION) / BBOX_PRECISION;
+const ceilToPrecision = (value: number) =>
+  Math.ceil(value * BBOX_PRECISION) / BBOX_PRECISION;
+const bboxContains = (outer: BBox, inner: BBox) =>
+  outer[0] <= inner[0] &&
+  outer[1] <= inner[1] &&
+  outer[2] >= inner[2] &&
+  outer[3] >= inner[3];
+const bboxOverlaps = (a: BBox, b: BBox) =>
+  a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+const mergeBbox = (a: BBox, b: BBox): BBox => [
+  Math.min(a[0], b[0]),
+  Math.min(a[1], b[1]),
+  Math.max(a[2], b[2]),
+  Math.max(a[3], b[3]),
+];
 
 type MapProps = {
   className?: string;
@@ -72,6 +94,8 @@ export default function MapView({
     new Map<number | string, Feature<Geometry>>()
   );
   const persistedFeatureOrderRef = useRef<Array<number | string>>([]);
+  const cachedCoverageRef = useRef(new Map<number, BBox[]>());
+  const maxCachedCoveragePerZoom = 128;
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -86,12 +110,66 @@ export default function MapView({
 
   const getBounds = () => {
     const bounds = map?.current?.getBounds();
+    if (!bounds) {
+      return;
+    }
 
     // Convert bounds to [west, south, east, north]
-    const bbox = bounds?.toArray().flat();
+    const raw = bounds.toArray().flat();
+    const width = raw[2] - raw[0];
+    const height = raw[3] - raw[1];
+    const padX = width * BBOX_PADDING_FACTOR;
+    const padY = height * BBOX_PADDING_FACTOR;
+    const bbox: BBox = [
+      floorToPrecision(raw[0] - padX),
+      floorToPrecision(raw[1] - padY),
+      ceilToPrecision(raw[2] + padX),
+      ceilToPrecision(raw[3] + padY),
+    ];
 
     // Ask your backend only for the visible area
-    return bbox?.join(",");
+    return { bbox, bboxString: bbox.join(",") };
+  };
+
+  const isBboxCached = (zoomLevel: number, bbox: BBox) => {
+    if (!persistClusterFeatures) {
+      return false;
+    }
+    const cached = cachedCoverageRef.current.get(zoomLevel);
+    if (!cached || cached.length === 0) {
+      return false;
+    }
+    return cached.some((entry) => bboxContains(entry, bbox));
+  };
+
+  const addBboxCoverage = (zoomLevel: number, bbox: BBox) => {
+    if (!persistClusterFeatures) {
+      return;
+    }
+    const cache = cachedCoverageRef.current;
+    const list = cache.get(zoomLevel) ?? [];
+    let merged = bbox;
+    let index = 0;
+    while (index < list.length) {
+      if (bboxOverlaps(list[index], merged)) {
+        merged = mergeBbox(list[index], merged);
+        list.splice(index, 1);
+        index = 0;
+        continue;
+      }
+      index += 1;
+    }
+    list.push(merged);
+
+    if (list.length > maxCachedCoveragePerZoom) {
+      list.sort(
+        (a, b) =>
+          (b[2] - b[0]) * (b[3] - b[1]) -
+          (a[2] - a[0]) * (a[3] - a[1])
+      );
+      list.length = maxCachedCoveragePerZoom;
+    }
+    cache.set(zoomLevel, list);
   };
 
   const makeClustersUrl = (bbox: string, zoomLevel: number) => {
@@ -112,12 +190,16 @@ export default function MapView({
     }
     const requestId = ++clusterRequestIdRef.current;
     const zoomValue = zoomLevel ?? map.current.getZoom() ?? 0;
-    const bbox = getBounds();
-    if (!bbox) {
+    const bounds = getBounds();
+    if (!bounds) {
       return;
     }
+    const { bbox, bboxString } = bounds;
     const normalizedZoom = Math.max(0, Math.round(zoomValue));
-    const clustersUrl = makeClustersUrl(bbox, normalizedZoom);
+    if (isBboxCached(normalizedZoom, bbox)) {
+      return;
+    }
+    const clustersUrl = makeClustersUrl(bboxString, normalizedZoom);
     if (!clustersUrl) {
       return;
     }
@@ -146,6 +228,7 @@ export default function MapView({
     }
 
     const incoming = geojson as GeoJSONData;
+    addBboxCoverage(normalizedZoom, bbox);
     if (
       persistClusterFeatures &&
       incoming.type === "FeatureCollection" &&
