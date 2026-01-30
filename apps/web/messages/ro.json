@@ -69,5 +69,51 @@
       "owner": "Gestionare anunt",
       "petDetails": "Detalii animal"
     }
+  },
+  "Search": {
+    "eyebrow": "Monitorizare live",
+    "subhead": "Vezi raportarile recente, filtreaza zona si apasa un pin pentru detalii rapide.",
+    "live": "Live",
+    "filters": {
+      "label": "Filtre",
+      "city": "Oras",
+      "type": "Tip",
+      "color": "Culoare",
+      "status": "Status",
+      "radius": "Raza"
+    },
+    "map": {
+      "title": "Harta orasului",
+      "badge": "Clustere"
+    },
+    "location": {
+      "label": "Locatie",
+      "placeholder": "Muta harta pentru strada si oras.",
+      "locate": "Localizeaza-ma",
+      "locating": "Localizare...",
+      "denied": "Localizarea este dezactivata.",
+      "hint": "Activeaz-o in Chrome pentru GPS."
+    },
+    "legend": {
+      "title": "Legenda clustere",
+      "small": "1–25 raportari",
+      "medium": "25–100 raportari",
+      "large": "100+ raportari"
+    },
+    "alerts": {
+      "title": "Alerte salvate",
+      "body": "Primesti email cand apare o potrivire in apropiere.",
+      "cta": "Creeaza alerta"
+    },
+    "detail": {
+      "title": "Detalii rapide",
+      "body": "Selecteaza un pin pentru nume, status si contact.",
+      "placeholder": "Nicio raportare selectata."
+    },
+    "list": {
+      "title": "Raportari in apropiere",
+      "badge": "Actualizat acum",
+      "more": "Incarca mai multe"
+    }
   }
 }

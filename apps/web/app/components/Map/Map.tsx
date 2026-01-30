@@ -8,16 +8,41 @@ import { createMapLibreGlMapController } from "@maptiler/geocoding-control/mapli
 import "@maptiler/geocoding-control/style.css";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
 const apiBase = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
-export default function Map() {
+
+type MapProps = {
+  className?: string;
+  onLocationChange?: (location: {
+    street?: string;
+    city?: string;
+    label: string;
+  }) => void;
+  locateLabel?: string;
+  locatingLabel?: string;
+  locateRequestId?: number;
+  onLocateRequest?: () => void;
+};
+
+export default function Map({
+  className = "",
+  onLocationChange,
+  locateLabel = "Locate me",
+  locatingLabel = "Locating...",
+  locateRequestId,
+  onLocateRequest,
+}: MapProps) {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
   >(undefined);
   const [currentPosition, setCurrentPosition] = useState({ lng: 0, lat: 0 });
+  const [locating, setLocating] = useState(false);
 
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<maptilersdk.Marker | null>(null);
+  const userMarkerRef = useRef<maptilersdk.Marker | null>(null);
   const map = useRef<maptilersdk.Map | null>(null);
   const intialPosRef = useRef({ lang: 26.102, lat: 44.435 });
+  const geocodeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const geocodeAbortRef = useRef<AbortController | null>(null);
 
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = "";
@@ -43,6 +68,66 @@ export default function Map() {
       return null;
     }
     return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${zoomLevel}`;
+  };
+
+  const triggerReverseGeocode = (lng: number, lat: number) => {
+    if (!onLocationChange || !maptilersdk.config.apiKey) {
+      return;
+    }
+
+    if (geocodeTimeoutRef.current) {
+      clearTimeout(geocodeTimeoutRef.current);
+    }
+
+    geocodeTimeoutRef.current = setTimeout(async () => {
+      if (geocodeAbortRef.current) {
+        geocodeAbortRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      geocodeAbortRef.current = controller;
+
+      try {
+        const res = await fetch(
+          `https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${maptilersdk.config.apiKey}`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) {
+          return;
+        }
+        const data = (await res.json()) as {
+          features?: Array<{
+            place_type?: string[];
+            text?: string;
+            place_name?: string;
+          }>;
+        };
+
+        const features = data.features ?? [];
+        const address = features.find((feature) =>
+          feature.place_type?.includes("address")
+        );
+        const place = features.find((feature) =>
+          feature.place_type?.some((type) =>
+            ["place", "locality", "municipality"].includes(type)
+          )
+        );
+
+        const street =
+          address?.text ?? address?.place_name?.split(",")[0]?.trim();
+        const city = place?.text;
+        const label =
+          [street, city].filter(Boolean).join(", ") ||
+          features[0]?.place_name ||
+          "";
+
+        onLocationChange({ street, city, label });
+      } catch (error) {
+        if ((error as { name?: string }).name === "AbortError") {
+          return;
+        }
+      }
+    }, 350);
   };
   useEffect(() => {
     if (map.current) return; // stops map from intializing more than once
@@ -177,7 +262,49 @@ export default function Map() {
         },
       });
     });
+
+    const center = map.current?.getCenter();
+    if (center) {
+      triggerReverseGeocode(center.lng, center.lat);
+    }
   }, [currentPosition]);
+
+  const handleLocate = (manual = false) => {
+    if (!map.current || !navigator.geolocation) {
+      return;
+    }
+    if (manual) {
+      onLocateRequest?.();
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { longitude, latitude } = position.coords;
+        updatePosition(longitude, latitude);
+        map.current?.easeTo({ center: [longitude, latitude], zoom: 14 });
+        triggerReverseGeocode(longitude, latitude);
+        if (!userMarkerRef.current) {
+          const el = document.createElement("div");
+          el.style.width = "14px";
+          el.style.height = "14px";
+          el.style.borderRadius = "999px";
+          el.style.background = "#0ea5e9";
+          el.style.boxShadow = "0 0 0 6px rgba(14,165,233,0.25)";
+          el.style.border = "2px solid #ffffff";
+          userMarkerRef.current = new maptilersdk.Marker({ element: el })
+            .setLngLat([longitude, latitude])
+            .addTo(map.current);
+        } else {
+          userMarkerRef.current.setLngLat([longitude, latitude]);
+        }
+        setLocating(false);
+      },
+      () => {
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   useEffect(() => {
     map?.current?.on("moveend", async () => {
@@ -200,13 +327,25 @@ export default function Map() {
         | maptilersdk.GeoJSONSource
         | undefined;
 
-       source?.setData(geojson);
+      source?.setData(geojson);
+
+      const center = map?.current?.getCenter();
+      if (center) {
+        triggerReverseGeocode(center.lng, center.lat);
+      }
     });
   }, []);
 
+  useEffect(() => {
+    if (typeof locateRequestId !== "number") {
+      return;
+    }
+    handleLocate(false);
+  }, [locateRequestId]);
+
   return (
-    <div className="relative bg-yellow-500 m-auto w-[calc(100%-10px)] h-[500px] p-[20px]">
-      <div className="geocoding absolute top-[10px] left-[10px]">
+    <div className={`relative h-full w-full ${className}`}>
+      <div className="geocoding absolute left-4 top-4 z-10 flex items-start gap-2">
         {mapController && (
           <GeocodingControl
             apiKey={maptilersdk.config.apiKey}
@@ -229,12 +368,18 @@ export default function Map() {
             }}
           />
         )}
+        <button
+          type="button"
+          onClick={() => handleLocate(true)}
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
+          aria-label={locateLabel}
+          disabled={locating}
+        >
+          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          {locating ? locatingLabel : locateLabel}
+        </button>
       </div>
       <div ref={mapContainer} className="map absolute h-full w-full" />
-      <div className="bg-red-500 text-2xl">
-        <p>Lng{currentPosition.lng}</p>
-        <p>Lat{currentPosition.lat}</p>
-      </div>
     </div>
   );
 }

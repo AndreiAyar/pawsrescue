@@ -69,5 +69,51 @@
       "owner": "Manage listing",
       "petDetails": "Pet details"
     }
+  },
+  "Search": {
+    "eyebrow": "Live tracking",
+    "subhead": "Browse recent reports, filter by area, and tap a pin to see quick details.",
+    "live": "Live",
+    "filters": {
+      "label": "Filters",
+      "city": "City",
+      "type": "Type",
+      "color": "Color",
+      "status": "Status",
+      "radius": "Radius"
+    },
+    "map": {
+      "title": "City map",
+      "badge": "Clusters"
+    },
+    "location": {
+      "label": "Location",
+      "placeholder": "Move the map to see the street and city.",
+      "locate": "Locate me",
+      "locating": "Locating...",
+      "denied": "Location is turned off.",
+      "hint": "Enable it in Chrome to use GPS."
+    },
+    "legend": {
+      "title": "Cluster legend",
+      "small": "1–25 reports",
+      "medium": "25–100 reports",
+      "large": "100+ reports"
+    },
+    "alerts": {
+      "title": "Saved alerts",
+      "body": "Get email updates when a matching report appears nearby.",
+      "cta": "Create alert"
+    },
+    "detail": {
+      "title": "Quick details",
+      "body": "Select a pin to preview name, status, and contact options.",
+      "placeholder": "No report selected yet."
+    },
+    "list": {
+      "title": "Nearby reports",
+      "badge": "Updated now",
+      "more": "Load more"
+    }
   }
 }
