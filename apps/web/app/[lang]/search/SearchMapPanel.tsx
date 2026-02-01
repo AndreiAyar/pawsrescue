@@ -44,7 +44,7 @@ export default function SearchMapPanel({
           <button
             type="button"
             onClick={() => setManualLocateRequestId((prev) => prev + 1)}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50 sm:hidden"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 transition hover:border-slate-300 hover:cursor-pointer hover:-translate-y-[0.5px] hover:bg-emerald-50 sm:hidden"
           >
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             {locateLabel}
