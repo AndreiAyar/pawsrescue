@@ -30,7 +30,7 @@ export default function FiltersBar({ label, filters }: FiltersBarProps) {
   return (
     <section
       ref={ref}
-      className="mt-6 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-700"
+      className="mt-6 mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-700"
     >
       <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 shadow-[0_8px_18px_-14px_rgba(15,23,42,0.4)]">
         {label}

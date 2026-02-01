@@ -114,7 +114,7 @@ export default async function SearchPage({
             </div> */}
           </div>
 
-          <div className="space-y-4">
+          <div className="mt-4 space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {s("detail.title")}
