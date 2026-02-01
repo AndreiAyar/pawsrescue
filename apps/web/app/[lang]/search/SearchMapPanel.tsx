@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@repo/ui/button";
 import MapClient from "./MapClient";
 
 type SearchMapPanelProps = {
@@ -41,14 +42,17 @@ export default function SearchMapPanel({
       <div className="flex items-center justify-between border-b border-slate-200/70 bg-white/70 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 sm:px-4 sm:py-3">
         <span>{title}</span>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
+            buttonType="mint"
+            size="sm"
+            shape="pill"
             onClick={() => setManualLocateRequestId((prev) => prev + 1)}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 transition hover:border-slate-300 hover:cursor-pointer hover:-translate-y-[0.5px] hover:bg-emerald-50 sm:hidden"
+            className="m-0 uppercase tracking-wide"
+            innerClassName="inline-flex items-center gap-2 text-[10px]"
           >
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             {locateLabel}
-          </button>
+          </Button>
           <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] text-emerald-800">
             {badge}
           </span>

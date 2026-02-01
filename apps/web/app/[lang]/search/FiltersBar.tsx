@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Button } from "@repo/ui/button";
 
 type FiltersBarProps = {
   label: string;
@@ -36,13 +37,16 @@ export default function FiltersBar({ label, filters }: FiltersBarProps) {
         {label}
       </span>
       {filters.map((item) => (
-        <button
+        <Button
           key={item}
-          type="button"
-          className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800 transition hover:-translate-y-0.5 hover:bg-amber-100"
+          buttonType="butter"
+          size="sm"
+          shape="pill"
+          className="m-0 min-w-0 font-semibold uppercase tracking-wide"
+          innerClassName="text-[11px] leading-none"
         >
           {item}
-        </button>
+        </Button>
       ))}
     </section>
   );

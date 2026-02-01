@@ -1,40 +1,46 @@
 "use client";
 
 import { ReactNode } from "react";
-
-
-const ButtonTypesStyles = {
-  main: {
-    div: "bg-amber-600 border-amber-700",
-    span: "bg-amber-500 border-amber-700",
-  },
-  secondary: {
-    div: "bg-amber-500 border-amber-600",
-    span: "bg-white border-amber-600",
-  },
-};
+import {
+  buttonShapeStyles,
+  buttonSizeStyles,
+  buttonVariantStyles,
+  type ButtonShape,
+  type ButtonSize,
+  type ButtonVariant,
+} from "./buttonStyles";
 
 interface ButtonProps {
   children: ReactNode;
   className?: string;
-  buttonType: "main" | "secondary";
+  innerClassName?: string;
+  buttonType: ButtonVariant;
+  size?: ButtonSize;
+  shape?: ButtonShape;
   onClick?: () => void;
   interactive?: boolean;
   type?: "button" | "submit" | "reset";
   href?: string;
+  ariaLabel?: string;
+  disabled?: boolean;
 }
 
 export const Button = ({
   children,
   buttonType,
-  type="button",
+  size = "md",
+  shape = "square",
+  type = "button",
   onClick,
   interactive = true,
   href,
   className = "",
+  innerClassName = "",
+  ariaLabel,
+  disabled = false,
 }: ButtonProps) => {
-  const baseDivClass = `cursor-pointer text-sm font-bold rounded-sm m-2 inline-block border-[1.5px] min-w-30 ${ButtonTypesStyles[buttonType].div} ${className}`;
-  const baseSpanClass = `${ButtonTypesStyles[buttonType].span} px-6 py-2 text-center rounded-sm border-[1.5px] -mx-[1.5px] active:-translate-y-[0.080rem] hover:-translate-y-[0.210rem] block -translate-y-0.5 transition-transform duration-100`;
+  const baseDivClass = `cursor-pointer font-bold border-[1.5px] min-w-30 disabled:cursor-not-allowed disabled:opacity-70 ${buttonVariantStyles[buttonType].outer} ${buttonSizeStyles[size].outer} ${buttonShapeStyles[shape].outer} ${className}`;
+  const baseSpanClass = `${buttonVariantStyles[buttonType].inner} ${buttonSizeStyles[size].inner} ${buttonShapeStyles[shape].inner} text-center border-[1.5px] -mx-[1.5px] active:-translate-y-[0.080rem] hover:-translate-y-[0.210rem] block -translate-y-0.5 transition-transform duration-100 ${innerClassName}`;
 
   if (interactive) {
     return (
@@ -42,6 +48,8 @@ export const Button = ({
         type={type}
         className={baseDivClass}
         onClick={onClick}
+        aria-label={ariaLabel}
+        disabled={disabled}
       >
         <span className={baseSpanClass}>{children}</span>
       </button>
@@ -54,6 +62,8 @@ export const Button = ({
       className={baseDivClass}
       tabIndex={0}
       role="button"
+      aria-label={ariaLabel}
+      aria-disabled={disabled}
     >
       <span className={baseSpanClass}>{children}</span>
     </a>

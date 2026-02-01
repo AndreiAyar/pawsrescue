@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import SearchMapPanel from "./SearchMapPanel";
 import FiltersBar from "./FiltersBar";
+import { Button } from "@repo/ui/button";
 
 type RecentItem = {
   name: string;
@@ -155,12 +156,14 @@ export default async function SearchPage({
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                className="mt-4 w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50"
+              <Button
+                buttonType="peach"
+                size="sm"
+                className="mx-auto block mt-2 w-48 min-w-0 justify-center uppercase tracking-wide"
+                innerClassName="w-full h-10 flex justify-center items-center"
               >
                 {s("list.more")}
-              </button>
+              </Button>
             </div>
           </div>
         </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@repo/ui/button";
 import type { Feature, FeatureCollection, Geometry, Point } from "geojson";
 import * as maptilersdk from "@maptiler/sdk";
 import "@maptiler/sdk/dist/maptiler-sdk.css";
@@ -872,16 +873,19 @@ export default function MapView({
           />
         )}
         {showLocateButton && (
-          <button
-            type="button"
+          <Button
+            buttonType="mint"
+            size="sm"
+            shape="pill"
             onClick={() => handleLocate(true)}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50"
-            aria-label={locateLabel}
+            className="m-0 uppercase tracking-wide"
+            innerClassName="inline-flex items-center gap-2"
+            ariaLabel={locateLabel}
             disabled={locating}
           >
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             {locating ? locatingLabel : locateLabel}
-          </button>
+          </Button>
         )}
       </div>
       <div ref={mapContainer} className="map absolute h-full w-full" />
