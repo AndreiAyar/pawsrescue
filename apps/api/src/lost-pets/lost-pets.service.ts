@@ -16,7 +16,8 @@ import { basename } from 'path';
 import { UPLOADS_ROUTE_PREFIX } from '../uploads/upload-config';
 import { UploadedPhoto } from '../uploads/uploaded-photo.type';
 
-const MOCK_DATA = true;
+const VECTOR_DIMENSIONS = 3;
+
 @Injectable()
 export class LostPetsService {
   constructor(
@@ -43,8 +44,93 @@ export class LostPetsService {
     };
   }
 
+  private isMockMode() {
+    return process.env.USE_MOCK_DATA !== 'false';
+  }
+
   private buildStoredImageUrls(photos: UploadedPhoto[]) {
     return photos.map((photo) => `${UPLOADS_ROUTE_PREFIX}/${basename(photo.filename)}`);
+  }
+
+  private buildStoredImagePaths(photos: UploadedPhoto[]) {
+    return photos.map((photo) => photo.path);
+  }
+
+  private buildVectorLiteral(embedding: number[]) {
+    return `[${embedding.map((value) => Number(value).toFixed(6)).join(',')}]`;
+  }
+
+  private async saveEmbeddingForPet(id: number, embedding: number[]) {
+    const vectorLiteral = this.buildVectorLiteral(embedding);
+    await this.em.getConnection().execute(
+      'update "lost_pets" set "embedding" = ?::vector where "id" = ?',
+      [vectorLiteral, id],
+    );
+  }
+
+  private async requestEmbedding(imagePaths: string[]) {
+    if (imagePaths.length === 0) {
+      return null;
+    }
+
+    const aiServiceUrl = process.env.AI_SERVICE_URL?.trim();
+    if (!aiServiceUrl) {
+      throw new InternalServerErrorException('AI_SERVICE_URL is not configured');
+    }
+
+    const response = await fetch(`${aiServiceUrl.replace(/\/$/, '')}/embed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ imagePaths }),
+    });
+
+    const data = (await response.json()) as {
+      detail?: string;
+      embedding?: number[];
+    };
+
+    if (!response.ok || !Array.isArray(data.embedding)) {
+      throw new InternalServerErrorException(
+        data.detail || 'AI service failed to generate an embedding',
+      );
+    }
+
+    if (data.embedding.length !== VECTOR_DIMENSIONS) {
+      throw new InternalServerErrorException('AI embedding dimensions are invalid');
+    }
+
+    return data.embedding.map((value) => Number(value));
+  }
+
+  private getMockMatches(city?: string) {
+    return [
+      {
+        id: 9001,
+        name: 'Mimi',
+        type: 'cat',
+        city: city?.trim() || 'Bucuresti',
+        imageUrl: null,
+        score: 0.042,
+      },
+      {
+        id: 9002,
+        name: 'Rex',
+        type: 'dog',
+        city: city?.trim() || 'Cluj',
+        imageUrl: null,
+        score: 0.087,
+      },
+      {
+        id: 9003,
+        name: 'Cleo',
+        type: 'cat',
+        city: city?.trim() || 'Iasi',
+        imageUrl: null,
+        score: 0.131,
+      },
+    ];
   }
 
   private validateCreateInput(pet: LostPetDTO) {
@@ -69,7 +155,6 @@ export class LostPetsService {
     this.validateCreateInput(pet);
 
     const uploadedImageUrls = this.buildStoredImageUrls(photos);
-    const providedImageUrls = pet.imageUrls?.filter(Boolean) ?? [];
 
     const createdPet = this.lostPetsRepository.create({
       name: pet.name.trim(),
@@ -81,11 +166,21 @@ export class LostPetsService {
       description: pet.description?.trim() || undefined,
       city: pet.city?.trim() || undefined,
       rawLocation: pet.rawLocation?.trim() || undefined,
-      imageUrls: [...uploadedImageUrls, ...providedImageUrls],
+      imageUrls: uploadedImageUrls,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
     await this.em.persistAndFlush(createdPet);
+
+    if (photos.length > 0) {
+      const embedding = await this.requestEmbedding(
+        this.buildStoredImagePaths(photos),
+      );
+      if (embedding) {
+        await this.saveEmbeddingForPet(createdPet.id, embedding);
+      }
+    }
+
     return this.normalizePet(createdPet);
   }
   async getClusters(
@@ -101,7 +196,7 @@ export class LostPetsService {
 
     try {
       const [minLng, minLat, maxLng, maxLat] = bbox;
-      if (MOCK_DATA) {
+      if (this.isMockMode()) {
         return getMockClusters([minLng, minLat, maxLng, maxLat], zoom);
       }
       const pets = await this.lostPetsRepository.find(
@@ -224,5 +319,79 @@ export class LostPetsService {
       return null;
     }
     return this.normalizePet(pet);
+  }
+
+  async match(photos: UploadedPhoto[] = [], city?: string) {
+    if (photos.length === 0) {
+      throw new BadRequestException('At least one photo is required');
+    }
+
+    if (this.isMockMode()) {
+      return {
+        mode: 'mock',
+        matches: this.getMockMatches(city),
+      };
+    }
+
+    const embedding = await this.requestEmbedding(this.buildStoredImagePaths(photos));
+    if (!embedding) {
+      return {
+        mode: 'real',
+        matches: [],
+      };
+    }
+
+    const vectorLiteral = this.buildVectorLiteral(embedding);
+    const params: (string | number)[] = [vectorLiteral];
+    let whereClause = 'where "embedding" is not null';
+
+    if (city?.trim()) {
+      whereClause += ' and lower("city") = lower(?)';
+      params.push(city.trim());
+    }
+
+    params.push(vectorLiteral);
+
+    const rows = (await this.em.getConnection().execute(
+      `
+        select
+          "id",
+          "name",
+          "type",
+          "city",
+          "image_urls" as "imageUrls",
+          "latitude",
+          "longitude",
+          "embedding" <-> ?::vector as "score"
+        from "lost_pets"
+        ${whereClause}
+        order by "embedding" <-> ?::vector asc
+        limit 10
+      `,
+      params,
+    )) as Array<{
+      id: number;
+      name: string;
+      type: string;
+      city: string | null;
+      imageUrls: string[] | null;
+      latitude: string | number;
+      longitude: string | number;
+      score: string | number;
+    }>;
+
+    return {
+      mode: 'real',
+      matches: rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        type: row.type,
+        city: row.city,
+        imageUrl: row.imageUrls?.[0] ?? null,
+        latitude: Number(row.latitude),
+        longitude: Number(row.longitude),
+        score: Number(row.score),
+      })),
+    };
   }
 }

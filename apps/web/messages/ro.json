@@ -118,7 +118,7 @@
   },
   "Report": {
     "title": "Raporteaza un animal pierdut",
-    "intro": "Completeaza rapid detaliile esentiale. Pentru acest prim MVP folosim coordonate si linkuri de imagini, ca sa tinem fluxul simplu si usor de demo-uit.",
+    "intro": "Completeaza rapid detaliile esentiale si incarca pozele direct in formular. Pentru acest prim MVP pastram fluxul simplu si usor de demo-uit.",
     "successTitle": "Anunt creat",
     "successBody": "Anuntul a fost salvat cu ID-ul",
     "viewApi": "Vezi raspunsul API",
@@ -154,5 +154,18 @@
       "bird": "Pasare",
       "other": "Altul"
     }
+  },
+  "Scan": {
+    "title": "Scaneaza animal gasit",
+    "intro": "Incarca pana la 4 poze si vezi rapid ce anunturi seamana cel mai mult. In modul demo primesti rezultate mock stabile, iar in modul real se foloseste vector search.",
+    "cityLabel": "Oras optional",
+    "cityPlaceholder": "Bucuresti",
+    "photosLabel": "Poze cu animalul gasit",
+    "photosHint": "Pozele sunt trimise la API, salvate local si apoi citite de serviciul AI din volumul comun.",
+    "submit": "Cauta potriviri",
+    "submitting": "Se cauta...",
+    "empty": "Inca nu exista rezultate. Incarca poze si porneste o cautare.",
+    "resultsTitle": "Potriviri",
+    "openListing": "Deschide anuntul"
   }
 }

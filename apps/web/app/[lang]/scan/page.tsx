@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import ScanForm from "./ScanForm";
 
 export default async function ScanPage({
   params,
@@ -7,21 +7,26 @@ export default async function ScanPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const t = await getTranslations({ locale: lang, namespace: "Common" });
-  const title = t("titles.scan");
+  const t = await getTranslations({ locale: lang, namespace: "Scan" });
+  const common = await getTranslations({ locale: lang, namespace: "Common" });
 
   return (
-    <main className="min-h-screen bg-[#f3f0e8] text-slate-900">
-      <div className="mx-auto max-w-4xl px-6 py-12">
-        <h1 className="text-3xl font-black">{title}</h1>
-        <p className="mt-3 text-slate-700">{t("comingSoon")}</p>
-        <Link
-          href={`/${lang}`}
-          className="mt-6 inline-block text-sm font-semibold underline decoration-2 underline-offset-4"
-        >
-          {t("backHome")}
-        </Link>
-      </div>
-    </main>
+    <ScanForm
+      lang={lang}
+      labels={{
+        title: t("title"),
+        intro: t("intro"),
+        backHome: common("backHome"),
+        cityLabel: t("cityLabel"),
+        cityPlaceholder: t("cityPlaceholder"),
+        photosLabel: t("photosLabel"),
+        photosHint: t("photosHint"),
+        submit: t("submit"),
+        submitting: t("submitting"),
+        empty: t("empty"),
+        resultsTitle: t("resultsTitle"),
+        openListing: t("openListing"),
+      }}
+    />
   );
 }

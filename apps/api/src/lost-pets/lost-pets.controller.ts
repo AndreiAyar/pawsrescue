@@ -77,12 +77,16 @@ export class LostPetsController {
         },
         filename: (_request, file, callback) => {
           const uniquePrefix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          const extension = extname(file.originalname || '').toLowerCase() || '.jpg';
+          const extension =
+            extname(file.originalname || '').toLowerCase() || '.jpg';
           callback(null, `${uniquePrefix}${extension}`);
         },
       }),
       fileFilter: (_request, file, callback) => {
-        callback(null, ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype.toLowerCase()));
+        callback(
+          null,
+          ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype.toLowerCase()),
+        );
       },
       limits: {
         files: 4,
@@ -95,5 +99,39 @@ export class LostPetsController {
     @UploadedFiles() photos: UploadedPhoto[] = [],
   ) {
     return this.lostPetsService.create(lostPet, photos);
+  }
+
+  @Post('match')
+  @UseInterceptors(
+    FilesInterceptor('photos', 4, {
+      storage: diskStorage({
+        destination: (_request, _file, callback) => {
+          const uploadsDir = ensureUploadsDir();
+          callback(null, uploadsDir);
+        },
+        filename: (_request, file, callback) => {
+          const uniquePrefix = `match-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          const extension =
+            extname(file.originalname || '').toLowerCase() || '.jpg';
+          callback(null, `${uniquePrefix}${extension}`);
+        },
+      }),
+      fileFilter: (_request, file, callback) => {
+        callback(
+          null,
+          ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype.toLowerCase()),
+        );
+      },
+      limits: {
+        files: 4,
+        fileSize: 8 * 1024 * 1024,
+      },
+    }),
+  )
+  match(
+    @Body('city') city: string | undefined,
+    @UploadedFiles() photos: UploadedPhoto[] = [],
+  ) {
+    return this.lostPetsService.match(photos, city);
   }
 }

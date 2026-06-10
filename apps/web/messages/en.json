@@ -118,7 +118,7 @@
   },
   "Report": {
     "title": "Report a lost pet",
-    "intro": "Fill in the essential details. For this first MVP we use coordinates and image links so the flow stays simple and easy to demo.",
+    "intro": "Fill in the essential details and upload the photos directly in the form. For this first MVP we keep the flow simple and easy to demo.",
     "successTitle": "Listing created",
     "successBody": "Your listing was saved with ID",
     "viewApi": "Open API response",
@@ -154,5 +154,18 @@
       "bird": "Bird",
       "other": "Other"
     }
+  },
+  "Scan": {
+    "title": "Scan a found pet",
+    "intro": "Upload up to 4 photos and quickly see which listings look most similar. In demo mode you get stable mock results, and in real mode the API uses vector search.",
+    "cityLabel": "Optional city",
+    "cityPlaceholder": "Bucharest",
+    "photosLabel": "Photos of the found pet",
+    "photosHint": "Photos go to the API, are stored locally, and then the AI service reads them from the shared volume.",
+    "submit": "Find matches",
+    "submitting": "Searching...",
+    "empty": "No results yet. Upload photos and start a search.",
+    "resultsTitle": "Matches",
+    "openListing": "Open listing"
   }
 }

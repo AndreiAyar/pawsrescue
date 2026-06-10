@@ -1,3 +1,4 @@
+import { MikroORM } from '@mikro-orm/core';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
@@ -17,6 +18,9 @@ async function bootstrap() {
   app.useStaticAssets(uploadsDir, {
     prefix: `${UPLOADS_ROUTE_PREFIX}/`,
   });
+
+  const orm = app.get(MikroORM);
+  await orm.getMigrator().up();
 
   await app.listen(process.env.PORT ?? 3015);
 }
