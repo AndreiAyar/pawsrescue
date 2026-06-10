@@ -134,7 +134,7 @@
       "latitude": "Latitude",
       "longitude": "Longitude",
       "description": "Description",
-      "imageUrls": "Image URLs"
+      "photos": "Photos"
     },
     "placeholders": {
       "name": "Mimi",
@@ -145,8 +145,8 @@
       "latitude": "44.4268",
       "longitude": "26.1025",
       "description": "Grey cat, scared, wearing a red collar.",
-      "imageUrls": "https://.../photo-1.jpg\nhttps://.../photo-2.jpg",
-      "petType": "Choose type"
+      "petType": "Choose type",
+      "photos": "Upload up to 4 photos. We store them locally for the MVP and will pass them to AI by file path."
     },
     "types": {
       "dog": "Dog",

@@ -12,6 +12,9 @@ import Supercluster from 'supercluster';
 import { ClusteringResult, PetFeature } from './types';
 import { tileToBbox } from './geo-tiles';
 import { getMockClusters } from './mock-clusters';
+import { basename } from 'path';
+import { UPLOADS_ROUTE_PREFIX } from '../uploads/upload-config';
+import { UploadedPhoto } from '../uploads/uploaded-photo.type';
 
 const MOCK_DATA = true;
 @Injectable()
@@ -40,6 +43,10 @@ export class LostPetsService {
     };
   }
 
+  private buildStoredImageUrls(photos: UploadedPhoto[]) {
+    return photos.map((photo) => `${UPLOADS_ROUTE_PREFIX}/${basename(photo.filename)}`);
+  }
+
   private validateCreateInput(pet: LostPetDTO) {
     if (!pet.name?.trim()) {
       throw new BadRequestException('Name is required');
@@ -58,8 +65,11 @@ export class LostPetsService {
     }
   }
 
-  async create(pet: LostPetDTO) {
+  async create(pet: LostPetDTO, photos: UploadedPhoto[] = []) {
     this.validateCreateInput(pet);
+
+    const uploadedImageUrls = this.buildStoredImageUrls(photos);
+    const providedImageUrls = pet.imageUrls?.filter(Boolean) ?? [];
 
     const createdPet = this.lostPetsRepository.create({
       name: pet.name.trim(),
@@ -71,7 +81,7 @@ export class LostPetsService {
       description: pet.description?.trim() || undefined,
       city: pet.city?.trim() || undefined,
       rawLocation: pet.rawLocation?.trim() || undefined,
-      imageUrls: pet.imageUrls?.filter(Boolean) ?? [],
+      imageUrls: [...uploadedImageUrls, ...providedImageUrls],
       createdAt: new Date(),
       updatedAt: new Date(),
     });

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@repo/ui/button";
+import { FileUpload } from "@repo/ui/fileUpload";
 import { FormField } from "@repo/ui/formField";
 import { Input } from "@repo/ui/input";
 import { Select } from "@repo/ui/select";
@@ -28,7 +29,7 @@ type ReportFormProps = {
       latitude: string;
       longitude: string;
       description: string;
-      imageUrls: string;
+      photos: string;
     };
     placeholders: {
       name: string;
@@ -39,8 +40,8 @@ type ReportFormProps = {
       latitude: string;
       longitude: string;
       description: string;
-      imageUrls: string;
       petType: string;
+      photos: string;
     };
     types: {
       dog: string;
@@ -61,7 +62,6 @@ type FormState = {
   latitude: string;
   longitude: string;
   description: string;
-  imageUrls: string;
 };
 
 const initialState: FormState = {
@@ -74,11 +74,12 @@ const initialState: FormState = {
   latitude: "44.4268",
   longitude: "26.1025",
   description: "",
-  imageUrls: "",
 };
 
 export default function ReportForm({ lang, labels }: ReportFormProps) {
   const [form, setForm] = useState<FormState>(initialState);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [uploadResetKey, setUploadResetKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
   const [createdPet, setCreatedPet] = useState<null | {
@@ -107,29 +108,26 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
     setError("");
     setCreatedPet(null);
 
-    const payload = {
-      name: form.name.trim(),
-      type: form.type,
-      email: form.email.trim(),
-      phone: form.phone.trim() || undefined,
-      city: form.city.trim() || undefined,
-      rawLocation: form.rawLocation.trim() || undefined,
-      latitude: Number(form.latitude),
-      longitude: Number(form.longitude),
-      description: form.description.trim() || undefined,
-      imageUrls: form.imageUrls
-        .split(/\n|,/)
-        .map((item) => item.trim())
-        .filter(Boolean),
-    };
+    const payload = new FormData();
+    payload.set("name", form.name.trim());
+    payload.set("type", form.type);
+    payload.set("email", form.email.trim());
+    payload.set("latitude", form.latitude);
+    payload.set("longitude", form.longitude);
+
+    if (form.phone.trim()) payload.set("phone", form.phone.trim());
+    if (form.city.trim()) payload.set("city", form.city.trim());
+    if (form.rawLocation.trim()) payload.set("rawLocation", form.rawLocation.trim());
+    if (form.description.trim()) payload.set("description", form.description.trim());
+
+    photos.forEach((photo) => {
+      payload.append("photos", photo);
+    });
 
     try {
       const response = await fetch("/api/lost-pets", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        body: payload,
       });
 
       const data = await response.json();
@@ -145,6 +143,8 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
         city: data.city ?? null,
       });
       setForm(initialState);
+      setPhotos([]);
+      setUploadResetKey((current) => current + 1);
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -279,17 +279,25 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
                 />
               </FormField>
 
-              <FormField label={labels.fields.imageUrls} name="imageUrls">
-                <textarea
-                  id="imageUrls"
-                  value={form.imageUrls}
-                  onChange={(event) =>
-                    updateField("imageUrls", event.target.value)
-                  }
-                  placeholder={labels.placeholders.imageUrls}
-                  rows={4}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-0 hover:border-gray-400"
-                />
+              <FormField label={labels.fields.photos} name="photos">
+                <div className="space-y-2">
+                  <FileUpload
+                    key={uploadResetKey}
+                    id="photos"
+                    name="photos"
+                    maxFiles={4}
+                    showPreview
+                    onChange={(event) => {
+                      const selectedFiles = event.target.files
+                        ? Array.from(event.target.files)
+                        : [];
+                      setPhotos(selectedFiles);
+                    }}
+                  />
+                  <p className="text-xs text-slate-500">
+                    {labels.placeholders.photos}
+                  </p>
+                </div>
               </FormField>
             </div>
 
@@ -317,8 +325,8 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
               </p>
               <p className="mt-2 text-sm text-slate-700">
                 This slice creates a real listing and returns it from the API.
-                Image URLs are accepted as plain text for now to keep the flow
-                simple.
+                Uploaded photos are stored locally and the same files can be
+                passed to the AI service by file path in the next slice.
               </p>
             </div>
 

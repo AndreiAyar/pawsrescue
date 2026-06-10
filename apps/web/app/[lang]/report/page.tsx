@@ -32,7 +32,7 @@ export default async function ReportPage({
           latitude: t("fields.latitude"),
           longitude: t("fields.longitude"),
           description: t("fields.description"),
-          imageUrls: t("fields.imageUrls"),
+          photos: t("fields.photos"),
         },
         placeholders: {
           name: t("placeholders.name"),
@@ -43,8 +43,8 @@ export default async function ReportPage({
           latitude: t("placeholders.latitude"),
           longitude: t("placeholders.longitude"),
           description: t("placeholders.description"),
-          imageUrls: t("placeholders.imageUrls"),
           petType: t("placeholders.petType"),
+          photos: t("placeholders.photos"),
         },
         types: {
           dog: t("types.dog"),

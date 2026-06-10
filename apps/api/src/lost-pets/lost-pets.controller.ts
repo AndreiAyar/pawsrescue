@@ -8,10 +8,26 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { ensureUploadsDir } from '../uploads/upload-config';
+import { UploadedPhoto } from '../uploads/uploaded-photo.type';
 import { LostPetsService } from './lost-pets.service';
 import { LostPetDTO } from './dtos/lost-pet.dto';
-// import { LostPet } from './interfaces/lostPet.interface';
+
+const ALLOWED_UPLOAD_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
 
 @Controller('lost-pets')
 export class LostPetsController {
@@ -52,7 +68,32 @@ export class LostPetsController {
   }
 
   @Post()
-  create(@Body() lostPet: LostPetDTO) {
-    return this.lostPetsService.create(lostPet);
+  @UseInterceptors(
+    FilesInterceptor('photos', 4, {
+      storage: diskStorage({
+        destination: (_request, _file, callback) => {
+          const uploadsDir = ensureUploadsDir();
+          callback(null, uploadsDir);
+        },
+        filename: (_request, file, callback) => {
+          const uniquePrefix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          const extension = extname(file.originalname || '').toLowerCase() || '.jpg';
+          callback(null, `${uniquePrefix}${extension}`);
+        },
+      }),
+      fileFilter: (_request, file, callback) => {
+        callback(null, ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype.toLowerCase()));
+      },
+      limits: {
+        files: 4,
+        fileSize: 8 * 1024 * 1024,
+      },
+    }),
+  )
+  create(
+    @Body() lostPet: LostPetDTO,
+    @UploadedFiles() photos: UploadedPhoto[] = [],
+  ) {
+    return this.lostPetsService.create(lostPet, photos);
   }
 }

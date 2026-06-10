@@ -134,7 +134,7 @@
       "latitude": "Latitudine",
       "longitude": "Longitudine",
       "description": "Descriere",
-      "imageUrls": "Linkuri imagini"
+      "photos": "Poze"
     },
     "placeholders": {
       "name": "Mimi",
@@ -145,8 +145,8 @@
       "latitude": "44.4268",
       "longitude": "26.1025",
       "description": "Pisica gri, speriata, cu zgarda rosie.",
-      "imageUrls": "https://.../poza-1.jpg\nhttps://.../poza-2.jpg",
-      "petType": "Alege tipul"
+      "petType": "Alege tipul",
+      "photos": "Incarca pana la 4 poze. Le salvam local pentru MVP si le vom trimite la AI prin path-uri de fisier."
     },
     "types": {
       "dog": "Caine",

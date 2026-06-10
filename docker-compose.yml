@@ -37,8 +37,11 @@ services:
       DB_NAME_NEST: ${POSTGRES_DB:-pawsrescue}
       AI_SERVICE_URL: http://ai:8000
       USE_MOCK_DATA: ${USE_MOCK_DATA:-true}
+      UPLOAD_DIR: /shared-uploads
     ports:
       - "${API_PORT:-3015}:3015"
+    volumes:
+      - shared-uploads:/shared-uploads
 
   web:
     build:
@@ -67,6 +70,9 @@ services:
       AI_MODEL_NAME: lightweight-stub
     ports:
       - "${AI_PORT:-8000}:8000"
+    volumes:
+      - shared-uploads:/shared-uploads
 
 volumes:
   postgres-data:
+  shared-uploads:
