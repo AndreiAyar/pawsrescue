@@ -115,5 +115,44 @@
       "badge": "Actualizat acum",
       "more": "Incarca mai multe"
     }
+  },
+  "Report": {
+    "title": "Raporteaza un animal pierdut",
+    "intro": "Completeaza rapid detaliile esentiale. Pentru acest prim MVP folosim coordonate si linkuri de imagini, ca sa tinem fluxul simplu si usor de demo-uit.",
+    "successTitle": "Anunt creat",
+    "successBody": "Anuntul a fost salvat cu ID-ul",
+    "viewApi": "Vezi raspunsul API",
+    "submit": "Creeaza anuntul",
+    "submitting": "Se salveaza...",
+    "fields": {
+      "name": "Nume animal",
+      "type": "Tip animal",
+      "email": "Email",
+      "phone": "Telefon",
+      "city": "Oras",
+      "location": "Locatie text",
+      "latitude": "Latitudine",
+      "longitude": "Longitudine",
+      "description": "Descriere",
+      "imageUrls": "Linkuri imagini"
+    },
+    "placeholders": {
+      "name": "Mimi",
+      "email": "stapan@example.com",
+      "phone": "07xx xxx xxx",
+      "city": "Bucuresti",
+      "location": "Piata Romana, langa parc",
+      "latitude": "44.4268",
+      "longitude": "26.1025",
+      "description": "Pisica gri, speriata, cu zgarda rosie.",
+      "imageUrls": "https://.../poza-1.jpg\nhttps://.../poza-2.jpg",
+      "petType": "Alege tipul"
+    },
+    "types": {
+      "dog": "Caine",
+      "cat": "Pisica",
+      "bird": "Pasare",
+      "other": "Altul"
+    }
   }
 }

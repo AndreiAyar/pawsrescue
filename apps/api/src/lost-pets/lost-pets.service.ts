@@ -22,18 +22,61 @@ export class LostPetsService {
     private readonly em: EntityManager,
   ) {}
 
-  async create(pet: LostPetDTO) {
-    const createdPet = this.lostPetsRepository.create({
+  private normalizePet(pet: LostPetEntity) {
+    return {
+      id: pet.id,
       name: pet.name,
-      latitude: pet.latitude,
-      longitude: pet.longitude,
       type: pet.type,
-      email: '',
+      email: pet.email,
+      phone: pet.phone ?? null,
+      description: pet.description ?? null,
+      city: pet.city ?? null,
+      rawLocation: pet.rawLocation ?? null,
+      latitude: Number(pet.latitude),
+      longitude: Number(pet.longitude),
+      imageUrls: pet.imageUrls ?? [],
+      createdAt: pet.createdAt,
+      updatedAt: pet.updatedAt,
+    };
+  }
+
+  private validateCreateInput(pet: LostPetDTO) {
+    if (!pet.name?.trim()) {
+      throw new BadRequestException('Name is required');
+    }
+    if (!pet.email?.trim()) {
+      throw new BadRequestException('Email is required');
+    }
+    if (!pet.type) {
+      throw new BadRequestException('Type is required');
+    }
+    if (!Number.isFinite(Number(pet.latitude))) {
+      throw new BadRequestException('Latitude must be a valid number');
+    }
+    if (!Number.isFinite(Number(pet.longitude))) {
+      throw new BadRequestException('Longitude must be a valid number');
+    }
+  }
+
+  async create(pet: LostPetDTO) {
+    this.validateCreateInput(pet);
+
+    const createdPet = this.lostPetsRepository.create({
+      name: pet.name.trim(),
+      latitude: Number(pet.latitude),
+      longitude: Number(pet.longitude),
+      type: pet.type,
+      email: pet.email.trim(),
+      phone: pet.phone?.trim() || undefined,
+      description: pet.description?.trim() || undefined,
+      city: pet.city?.trim() || undefined,
+      rawLocation: pet.rawLocation?.trim() || undefined,
+      imageUrls: pet.imageUrls?.filter(Boolean) ?? [],
       createdAt: new Date(),
       updatedAt: new Date(),
     });
     await this.em.persistAndFlush(createdPet);
-    return createdPet;
+    return this.normalizePet(createdPet);
   }
   async getClusters(
     bboxString: string,
@@ -157,7 +200,19 @@ export class LostPetsService {
 
     return this.getClusters(bbox.join(','), String(zoom));
   }
-  async findAll(): Promise<LostPetEntity[]> {
-    return await this.lostPetsRepository.findAll();
+
+  async findAll() {
+    const pets = await this.lostPetsRepository.findAll({
+      orderBy: { createdAt: 'desc' },
+    });
+    return pets.map((pet) => this.normalizePet(pet));
+  }
+
+  async findOne(id: number) {
+    const pet = await this.lostPetsRepository.findOne({ id });
+    if (!pet) {
+      return null;
+    }
+    return this.normalizePet(pet);
   }
 }

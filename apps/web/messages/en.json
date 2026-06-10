@@ -115,5 +115,44 @@
       "badge": "Updated now",
       "more": "Load more"
     }
+  },
+  "Report": {
+    "title": "Report a lost pet",
+    "intro": "Fill in the essential details. For this first MVP we use coordinates and image links so the flow stays simple and easy to demo.",
+    "successTitle": "Listing created",
+    "successBody": "Your listing was saved with ID",
+    "viewApi": "Open API response",
+    "submit": "Create listing",
+    "submitting": "Saving...",
+    "fields": {
+      "name": "Pet name",
+      "type": "Pet type",
+      "email": "Email",
+      "phone": "Phone",
+      "city": "City",
+      "location": "Location note",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "description": "Description",
+      "imageUrls": "Image URLs"
+    },
+    "placeholders": {
+      "name": "Mimi",
+      "email": "owner@example.com",
+      "phone": "+40...",
+      "city": "Bucharest",
+      "location": "Roman Square, near the park",
+      "latitude": "44.4268",
+      "longitude": "26.1025",
+      "description": "Grey cat, scared, wearing a red collar.",
+      "imageUrls": "https://.../photo-1.jpg\nhttps://.../photo-2.jpg",
+      "petType": "Choose type"
+    },
+    "types": {
+      "dog": "Dog",
+      "cat": "Cat",
+      "bird": "Bird",
+      "other": "Other"
+    }
   }
 }

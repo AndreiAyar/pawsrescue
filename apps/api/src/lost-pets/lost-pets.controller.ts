@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Header,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -36,15 +37,22 @@ export class LostPetsController {
     return this.lostPetsService.getClustersForTile(z, x, y, buffer);
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number): any {
-    console.log('process', process.env.DB_HOST);
+  @Get()
+  async findAll() {
     return this.lostPetsService.findAll();
   }
 
+  @Get(':id')
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    const pet = await this.lostPetsService.findOne(id);
+    if (!pet) {
+      throw new NotFoundException(`Lost pet ${id} was not found`);
+    }
+    return pet;
+  }
+
   @Post()
-  create(@Body() lostCat: LostPetDTO) {
-    console.log('l',lostCat)
-    return this.lostPetsService.create(lostCat);
+  create(@Body() lostPet: LostPetDTO) {
+    return this.lostPetsService.create(lostPet);
   }
 }
