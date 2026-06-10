@@ -4,11 +4,13 @@ import SearchMapPanel from "./SearchMapPanel";
 import FiltersBar from "./FiltersBar";
 import { Button } from "@repo/ui/button";
 
-type RecentItem = {
+type SearchItem = {
+  id: number;
   name: string;
-  city: string;
+  city: string | null;
   type: string;
-  time: string;
+  imageUrls: string[];
+  createdAt: string;
 };
 
 export default async function SearchPage({
@@ -20,9 +22,11 @@ export default async function SearchPage({
   const t = await getTranslations({ locale: lang, namespace: "Common" });
   const s = await getTranslations({ locale: lang, namespace: "Search" });
   const title = t("titles.search");
-  const messages = (await import(`../../../messages/${lang}.json`)).default;
-  const recentItems = (messages as { Home?: { recentItems?: RecentItem[] } })
-    ?.Home?.recentItems ?? [];
+  const response = await fetch(
+    `${process.env.API_URL ?? "http://localhost:3015"}/lost-pets`,
+    { cache: "no-store" }
+  );
+  const recentItems = response.ok ? ((await response.json()) as SearchItem[]) : [];
 
   return (
     <main className="min-h-screen bg-warm-texture text-slate-900">
@@ -137,9 +141,9 @@ export default async function SearchPage({
               </div>
               <div className="mt-4 grid gap-3">
                 {recentItems.map((item) => (
-                  <button
-                    key={`${item.name}-${item.city}`}
-                    type="button"
+                  <Link
+                    key={item.id}
+                    href={`/${lang}/pets/${item.id}`}
                     className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-left shadow-[0_12px_22px_-18px_rgba(31,41,55,0.35)] transition hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-50/60"
                   >
                     <div>
@@ -147,13 +151,13 @@ export default async function SearchPage({
                         {item.name}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {item.type} · {item.city}
+                        {item.type} {item.city ? `· ${item.city}` : ""}
                       </p>
                     </div>
                     <span className="rounded-full bg-[color:var(--butter)] px-3 py-1 text-xs font-semibold uppercase text-amber-700">
-                      {item.time}
+                      #{item.id}
                     </span>
-                  </button>
+                  </Link>
                 ))}
               </div>
               <Button

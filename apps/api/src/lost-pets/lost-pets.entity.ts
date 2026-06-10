@@ -97,6 +97,9 @@ export class LostPetEntity {
   @Property({ type: 'json', nullable: true })
   mapTilerData?: any;
 
+  @Property({ type: 'text', nullable: true, columnType: 'vector(3)' })
+  embedding?: string;
+
   @Property({ onCreate: () => new Date() })
   createdAt!: Date;
 

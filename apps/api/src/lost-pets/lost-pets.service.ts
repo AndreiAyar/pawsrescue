@@ -48,6 +48,57 @@ export class LostPetsService {
     return process.env.USE_MOCK_DATA !== 'false';
   }
 
+
+  private getMockPets() {
+    return [
+      {
+        id: 9001,
+        name: 'Mimi',
+        type: 'cat',
+        email: 'owner+mimi@example.com',
+        phone: '0711111111',
+        description: 'Pisica gri, prietenoasa, vazuta ultima data langa parc.',
+        city: 'Bucuresti',
+        rawLocation: 'Piata Romana',
+        latitude: 44.4479,
+        longitude: 26.0979,
+        imageUrls: [],
+        createdAt: new Date('2026-06-08T10:00:00.000Z'),
+        updatedAt: new Date('2026-06-08T10:00:00.000Z'),
+      },
+      {
+        id: 9002,
+        name: 'Rex',
+        type: 'dog',
+        email: 'owner+rex@example.com',
+        phone: '0722222222',
+        description: 'Caine maro, energic, cu zgarda neagra.',
+        city: 'Cluj',
+        rawLocation: 'Parcul Central',
+        latitude: 46.7704,
+        longitude: 23.5899,
+        imageUrls: [],
+        createdAt: new Date('2026-06-07T14:30:00.000Z'),
+        updatedAt: new Date('2026-06-07T14:30:00.000Z'),
+      },
+      {
+        id: 9003,
+        name: 'Cleo',
+        type: 'cat',
+        email: 'owner+cleo@example.com',
+        phone: null,
+        description: 'Pisica alba cu pete portocalii.',
+        city: 'Iasi',
+        rawLocation: 'Copou',
+        latitude: 47.1739,
+        longitude: 27.5748,
+        imageUrls: [],
+        createdAt: new Date('2026-06-06T09:15:00.000Z'),
+        updatedAt: new Date('2026-06-06T09:15:00.000Z'),
+      },
+    ];
+  }
+
   private buildStoredImageUrls(photos: UploadedPhoto[]) {
     return photos.map((photo) => `${UPLOADS_ROUTE_PREFIX}/${basename(photo.filename)}`);
   }
@@ -105,32 +156,21 @@ export class LostPetsService {
   }
 
   private getMockMatches(city?: string) {
-    return [
-      {
-        id: 9001,
-        name: 'Mimi',
-        type: 'cat',
-        city: city?.trim() || 'Bucuresti',
-        imageUrl: null,
-        score: 0.042,
-      },
-      {
-        id: 9002,
-        name: 'Rex',
-        type: 'dog',
-        city: city?.trim() || 'Cluj',
-        imageUrl: null,
-        score: 0.087,
-      },
-      {
-        id: 9003,
-        name: 'Cleo',
-        type: 'cat',
-        city: city?.trim() || 'Iasi',
-        imageUrl: null,
-        score: 0.131,
-      },
-    ];
+    return this.getMockPets()
+      .filter(
+        (pet) =>
+          !city?.trim() || pet.city.toLowerCase() === city.trim().toLowerCase(),
+      )
+      .map((pet, index) => ({
+        id: pet.id,
+        name: pet.name,
+        type: pet.type,
+        city: pet.city,
+        imageUrl: pet.imageUrls[0] ?? null,
+        latitude: pet.latitude,
+        longitude: pet.longitude,
+        score: [0.042, 0.087, 0.131][index] ?? 0.2,
+      }));
   }
 
   private validateCreateInput(pet: LostPetDTO) {
@@ -307,6 +347,10 @@ export class LostPetsService {
   }
 
   async findAll() {
+    if (this.isMockMode()) {
+      return this.getMockPets();
+    }
+
     const pets = await this.lostPetsRepository.findAll({
       orderBy: { createdAt: 'desc' },
     });
@@ -314,6 +358,10 @@ export class LostPetsService {
   }
 
   async findOne(id: number) {
+    if (this.isMockMode()) {
+      return this.getMockPets().find((pet) => pet.id === id) ?? null;
+    }
+
     const pet = await this.lostPetsRepository.findOne({ id });
     if (!pet) {
       return null;

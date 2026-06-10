@@ -2,6 +2,8 @@ from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, HTTPException
+import numpy as np
+from PIL import Image
 from pydantic import BaseModel
 
 
@@ -31,13 +33,16 @@ def embed(payload: EmbedRequest) -> dict[str, list[float] | str]:
             detail=f"Missing image paths: {', '.join(missing_paths)}",
         )
 
-    sizes = [path.stat().st_size for path in existing_paths]
-    total_size = float(sum(sizes))
-    image_count = float(len(existing_paths))
-    average_size = total_size / image_count if image_count else 0.0
+    embeddings = []
+    for path in existing_paths:
+        image = Image.open(path).convert("RGB").resize((64, 64))
+        pixels = np.asarray(image, dtype=np.float32) / 255.0
+        mean_rgb = pixels.mean(axis=(0, 1))
+        embeddings.append(mean_rgb)
 
-    # Lightweight deterministic stub for local MVP wiring.
+    aggregate = np.mean(np.stack(embeddings, axis=0), axis=0)
+
     return {
-        "model": "lightweight-stub",
-        "embedding": [image_count, total_size, average_size],
+        "model": "basic-rgb-embedder",
+        "embedding": aggregate.astype(float).tolist(),
     }
