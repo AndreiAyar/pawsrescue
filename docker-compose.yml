@@ -1,0 +1,72 @@
+services:
+  db:
+    image: ankane/pgvector:pg17
+    container_name: pawsrescue-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pawsrescue}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-pawsrescue}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: pawsrescue-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      ai:
+        condition: service_started
+    environment:
+      PORT: ${API_PORT:-3015}
+      DB_HOST_NEST: db
+      DB_PORT_NEST: 5432
+      DB_USER_NEST: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD_NEST: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME_NEST: ${POSTGRES_DB:-pawsrescue}
+      AI_SERVICE_URL: http://ai:8000
+      USE_MOCK_DATA: ${USE_MOCK_DATA:-true}
+    ports:
+      - "${API_PORT:-3015}:3015"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: pawsrescue-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      PORT: ${WEB_PORT:-3000}
+      API_URL: http://api:3015
+      NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-3015}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+  ai:
+    build:
+      context: .
+      dockerfile: apps/ai/Dockerfile
+    container_name: pawsrescue-ai
+    restart: unless-stopped
+    environment:
+      AI_PORT: ${AI_PORT:-8000}
+      AI_MODEL_NAME: lightweight-stub
+    ports:
+      - "${AI_PORT:-8000}:8000"
+
+volumes:
+  postgres-data:

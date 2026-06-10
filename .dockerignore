@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.next
+dist
+coverage
+.turbo
+.git
+.DS_Store
+apps/ai/__pycache__
+apps/ai/.pytest_cache
+apps/ai/.venv
