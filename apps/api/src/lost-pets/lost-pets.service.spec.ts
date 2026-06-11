@@ -11,8 +11,10 @@ jest.mock('supercluster', () => {
   }));
 });
 
-const { LostPetsService } = require('./lost-pets.service') as typeof import('./lost-pets.service');
-const { LostPetEntity } = require('./lost-pets.entity') as typeof import('./lost-pets.entity');
+const { LostPetsService } =
+  require('./lost-pets.service') as typeof import('./lost-pets.service');
+const { LostPetEntity } =
+  require('./lost-pets.entity') as typeof import('./lost-pets.entity');
 
 describe('LostPetsService', () => {
   let service: LostPetsService;
@@ -162,8 +164,7 @@ describe('LostPetsService', () => {
       ok: true,
       text: async () =>
         JSON.stringify({
-          model:
-            'dinov3-cat-crop-v1:facebook/dinov3-vitl16-pretrain-lvd1689m',
+          model: 'dinov3-cat-crop-v1:facebook/dinov3-vitl16-pretrain-lvd1689m',
           fallbackUsed: false,
           warning: null,
           embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),

@@ -28,7 +28,7 @@ export default async function SearchPage({
   try {
     const response = await fetch(
       `${process.env.API_URL ?? "http://localhost:3015"}/lost-pets`,
-      { cache: "no-store" }
+      { cache: "no-store" },
     );
 
     if (response.ok) {
@@ -45,9 +45,6 @@ export default async function SearchPage({
       <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
         <header className="flex flex-wrap items-start justify-between gap-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
-              {s("eyebrow")}
-            </p>
             <h1 className="font-display text-3xl font-black sm:text-4xl">
               {title}
             </h1>
@@ -56,10 +53,6 @@ export default async function SearchPage({
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 sm:inline-flex">
-              {s("live")}
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
             <Link
               href={`/${lang}`}
               className="text-sm font-semibold underline decoration-2 underline-offset-4"
@@ -85,7 +78,6 @@ export default async function SearchPage({
             <SearchMapPanel
               lang={lang}
               title={s("map.title")}
-              badge={s("map.badge")}
               openListingLabel={s("map.openListing")}
               locateLabel={s("location.locate")}
               locatingLabel={s("location.locating")}
@@ -94,56 +86,9 @@ export default async function SearchPage({
               locationDenied={s("location.denied")}
               locationHint={s("location.hint")}
             />
-            {/* 
-            This is the legend. DO NOT TOUCH THIS. NOT HUMAN NOT AI!
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm shadow-[0_16px_28px_-24px_rgba(31,41,55,0.4)]">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {s("legend.title")}
-                </p>
-                <div className="mt-3 space-y-2 text-xs text-slate-700">
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-[#51bbd6]" />
-                    {s("legend.small")}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-[#f1f075]" />
-                    {s("legend.medium")}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-[#f28cb1]" />
-                    {s("legend.large")}
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm shadow-[0_16px_28px_-24px_rgba(16,185,129,0.35)]">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">
-                  {s("alerts.title")}
-                </p>
-                <p className="mt-2 text-sm text-emerald-900/80">
-                  {s("alerts.body")}
-                </p>
-                <button
-                  type="button"
-                  className="mt-3 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700"
-                >
-                  {s("alerts.cta")}
-                </button>
-              </div>
-            </div> */}
           </div>
 
           <div className="mt-4 space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {s("detail.title")}
-              </p>
-              <p className="mt-2 text-sm text-slate-700">{s("detail.body")}</p>
-              <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white/70 p-4 text-xs text-slate-500">
-                {s("detail.placeholder")}
-              </div>
-            </div>
-
             <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
               <div className="flex items-center justify-between">
                 <h2 className="font-display text-xl font-bold">

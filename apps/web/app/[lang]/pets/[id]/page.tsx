@@ -13,11 +13,6 @@ type PetDetail = {
   latitude: number;
   longitude: number;
   imageUrls: string[];
-  embeddingInfo: {
-    model: string;
-    fallbackUsed: boolean;
-    warning: string | null;
-  } | null;
 };
 
 function getPetImageUrl(imageUrl?: string | null) {
@@ -131,36 +126,6 @@ export default async function PetDetailPage({
                 </p>
                 <p className="mt-1">{pet.rawLocation ?? "Not provided"}</p>
               </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t("embedding.title")}
-              </p>
-              {pet.embeddingInfo ? (
-                <div className="mt-2 space-y-1">
-                  <p>
-                    <span className="font-semibold">{t("embedding.model")}:</span>{" "}
-                    {pet.embeddingInfo.model}
-                  </p>
-                  <p>
-                    <span className="font-semibold">{t("embedding.fallback")}:</span>{" "}
-                    {pet.embeddingInfo.fallbackUsed
-                      ? t("embedding.yes")
-                      : t("embedding.no")}
-                  </p>
-                  {pet.embeddingInfo.warning ? (
-                    <p className="text-amber-700">
-                      <span className="font-semibold">
-                        {t("embedding.warning")}:
-                      </span>{" "}
-                      {pet.embeddingInfo.warning}
-                    </p>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="mt-2 text-slate-600">{t("embedding.missing")}</p>
-              )}
             </div>
           </section>
 

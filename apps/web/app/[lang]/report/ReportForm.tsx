@@ -17,7 +17,6 @@ type ReportFormProps = {
     backHome: string;
     successTitle: string;
     successBody: string;
-    viewApi: string;
     submit: string;
     submitting: string;
     map: {
@@ -40,11 +39,6 @@ type ReportFormProps = {
       flowIdentity: string;
       flowContact: string;
       flowPhotos: string;
-      apiTitle: string;
-      visualCheck: string;
-      visualLineOne: string;
-      visualLineTwo: string;
-      visualLineThree: string;
     };
     fields: {
       name: string;
@@ -122,7 +116,7 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
       { value: "bird", label: labels.types.bird },
       { value: "other", label: labels.types.other },
     ],
-    [labels.types]
+    [labels.types],
   );
 
   const updateField = (field: keyof FormState, value: string) => {
@@ -144,8 +138,10 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
 
     if (form.phone.trim()) payload.set("phone", form.phone.trim());
     if (form.city.trim()) payload.set("city", form.city.trim());
-    if (form.rawLocation.trim()) payload.set("rawLocation", form.rawLocation.trim());
-    if (form.description.trim()) payload.set("description", form.description.trim());
+    if (form.rawLocation.trim())
+      payload.set("rawLocation", form.rawLocation.trim());
+    if (form.description.trim())
+      payload.set("description", form.description.trim());
 
     photos.forEach((photo) => {
       payload.append("photos", photo);
@@ -176,7 +172,7 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
       setError(
         submissionError instanceof Error
           ? submissionError.message
-          : "Could not create listing."
+          : "Could not create listing.",
       );
     } finally {
       setSubmitting(false);
@@ -262,14 +258,6 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                  {labels.fields.latitude}: {form.latitude}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                  {labels.fields.longitude}: {form.longitude}
-                </span>
-              </div>
             </div>
 
             <div className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50/85 p-5 shadow-[0_18px_34px_-26px_rgba(16,185,129,0.35)]">
@@ -285,13 +273,6 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
                     {createdPet.name}
                     {createdPet.city ? ` · ${createdPet.city}` : ""}
                   </p>
-                  <Link
-                    href={`/api/lost-pets/${createdPet.id}`}
-                    target="_blank"
-                    className="inline-block font-semibold underline decoration-2 underline-offset-4"
-                  >
-                    {labels.viewApi}
-                  </Link>
                 </div>
               ) : (
                 <p className="mt-2 text-sm text-emerald-900/80">
@@ -302,7 +283,7 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
           </aside>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <div>
           <form
             onSubmit={handleSubmit}
             className="rounded-[1.75rem] border border-slate-200 bg-white/85 p-6 shadow-[0_22px_38px_-28px_rgba(31,41,55,0.4)]"
@@ -434,30 +415,6 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
               {submitting ? labels.submitting : labels.submit}
             </Button>
           </form>
-
-          <aside className="space-y-4">
-            <div className="rounded-[1.75rem] border border-slate-200 bg-white/85 p-5 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {labels.ui.apiTitle}
-              </p>
-              <p className="mt-2 text-sm text-slate-700">
-                This slice creates a real listing and returns it from the API.
-                Uploaded photos are stored locally and the same files can be
-                passed to the AI service by file path in the next slice.
-              </p>
-            </div>
-
-            <div className="rounded-[1.75rem] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,250,245,0.9),rgba(255,255,255,0.95))] p-5 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {labels.ui.visualCheck}
-              </p>
-              <div className="mt-3 space-y-3 text-sm text-slate-700">
-                <p>{labels.ui.visualLineOne}</p>
-                <p>{labels.ui.visualLineTwo}</p>
-                <p>{labels.ui.visualLineThree}</p>
-              </div>
-            </div>
-          </aside>
         </div>
       </div>
     </main>

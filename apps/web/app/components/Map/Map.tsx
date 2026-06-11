@@ -35,6 +35,7 @@ type MapProps = {
   onLocateRequest?: () => void;
   onLocateError?: (error: GeolocationPositionError) => void;
   showLocateButton?: boolean;
+  showSearchControl?: boolean;
   enableCenterMarker?: boolean;
   maxReverseGeocodeRequests?: number;
   persistClusterFeatures?: boolean;
@@ -57,6 +58,7 @@ export default function MapView({
   onLocateRequest,
   onLocateError,
   showLocateButton = true,
+  showSearchControl = true,
   enableCenterMarker = false,
   maxReverseGeocodeRequests = 25,
   persistClusterFeatures = false,
@@ -92,7 +94,7 @@ export default function MapView({
       paddingFactor: BBOX_PADDING_FACTOR,
       maxCoveragePerZoom: MAX_CACHED_COVERAGE_PER_ZOOM,
       maxFeatureCount: maxPersistedClusterFeatures,
-    })
+    }),
   );
 
   useEffect(() => {
@@ -122,7 +124,7 @@ export default function MapView({
     zoomLevel: number,
     x: number,
     y: number,
-    buffer: number
+    buffer: number,
   ) => {
     const normalizedZoom = Math.max(0, Math.floor(zoomLevel));
     const bufferParam = buffer > 1 ? `?buffer=${buffer}` : "";
@@ -177,7 +179,7 @@ export default function MapView({
             tileRequest.z,
             tileRequest.x,
             tileRequest.y,
-            tileRequest.buffer
+            tileRequest.buffer,
           )
         : makeClustersUrl(bboxString, normalizedZoom);
       if (!clustersUrl) {
@@ -217,7 +219,7 @@ export default function MapView({
         Array.isArray(incoming.features)
       ) {
         source.setData(
-          cacheRef.current.upsertFeatures(normalizedZoom, incoming.features)
+          cacheRef.current.upsertFeatures(normalizedZoom, incoming.features),
         );
         return;
       }
@@ -257,7 +259,7 @@ export default function MapView({
       try {
         const res = await fetch(
           `https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${maptilersdk.config.apiKey}`,
-          { signal: controller.signal }
+          { signal: controller.signal },
         );
         if (!res.ok) {
           return;
@@ -272,12 +274,12 @@ export default function MapView({
 
         const features = data.features ?? [];
         const address = features.find((feature) =>
-          feature.place_type?.includes("address")
+          feature.place_type?.includes("address"),
         );
         const place = features.find((feature) =>
           feature.place_type?.some((type) =>
-            ["place", "locality", "municipality"].includes(type)
-          )
+            ["place", "locality", "municipality"].includes(type),
+          ),
         );
 
         const street =
@@ -386,7 +388,15 @@ export default function MapView({
             750,
             "#f28cb1",
           ],
-          "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            20,
+            100,
+            30,
+            750,
+            40,
+          ],
         },
       });
 
@@ -632,10 +642,12 @@ export default function MapView({
             : currentZoom + 2;
         const nextZoom = Math.min(
           Math.max(targetZoom, currentZoom + 1),
-          map.current.getMaxZoom()
+          map.current.getMaxZoom(),
         );
-        const coords = (clusterFeature.geometry as Point)
-          .coordinates as [number, number];
+        const coords = (clusterFeature.geometry as Point).coordinates as [
+          number,
+          number,
+        ];
         map.current.easeTo({
           center: coords,
           zoom: nextZoom,
@@ -840,7 +852,7 @@ export default function MapView({
         }
         setLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000 },
     );
   };
 
@@ -909,7 +921,7 @@ export default function MapView({
   return (
     <div className={`relative h-full w-full ${className}`}>
       <div className="geocoding absolute left-4 top-4 z-10 flex items-start gap-2">
-        {mapController && (
+        {showSearchControl && mapController && (
           <GeocodingControl
             apiKey={maptilersdk.config.apiKey}
             mapController={mapController}

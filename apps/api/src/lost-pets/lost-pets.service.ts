@@ -12,8 +12,9 @@ import Supercluster from 'supercluster';
 import { ClusteringResult, PetFeature } from './types';
 import { tileToBbox } from './geo-tiles';
 import { getMockClusters } from './mock-clusters';
-import { basename } from 'path';
-import { UPLOADS_ROUTE_PREFIX } from '../uploads/upload-config';
+import { existsSync } from 'fs';
+import { basename, join } from 'path';
+import { getUploadsDir, UPLOADS_ROUTE_PREFIX } from '../uploads/upload-config';
 import { UploadedPhoto } from '../uploads/uploaded-photo.type';
 
 const VECTOR_DIMENSIONS = 1024;
@@ -142,7 +143,6 @@ export class LostPetsService {
     return process.env.USE_MOCK_DATA === 'true';
   }
 
-
   private getMockPets(): PetResponse[] {
     const mockPets: NormalizablePet[] = [
       {
@@ -208,7 +208,9 @@ export class LostPetsService {
   }
 
   private buildStoredImageUrls(photos: UploadedPhoto[]) {
-    return photos.map((photo) => `${UPLOADS_ROUTE_PREFIX}/${basename(photo.filename)}`);
+    return photos.map(
+      (photo) => `${UPLOADS_ROUTE_PREFIX}/${basename(photo.filename)}`,
+    );
   }
 
   private buildStoredImagePaths(photos: UploadedPhoto[]) {
@@ -219,7 +221,10 @@ export class LostPetsService {
     return `[${embedding.map((value) => Number(value).toFixed(6)).join(',')}]`;
   }
 
-  private async saveEmbeddingForPet(id: number, embeddingResult: EmbeddingResult) {
+  private async saveEmbeddingForPet(
+    id: number,
+    embeddingResult: EmbeddingResult,
+  ) {
     const vectorLiteral = this.buildVectorLiteral(embeddingResult.embedding);
     await this.em.getConnection().execute(
       `
@@ -248,7 +253,9 @@ export class LostPetsService {
 
     const aiServiceUrl = process.env.AI_SERVICE_URL?.trim();
     if (!aiServiceUrl) {
-      throw new InternalServerErrorException('AI_SERVICE_URL is not configured');
+      throw new InternalServerErrorException(
+        'AI_SERVICE_URL is not configured',
+      );
     }
 
     try {
@@ -285,7 +292,9 @@ export class LostPetsService {
       }
 
       if (data.embedding.length !== VECTOR_DIMENSIONS) {
-        throw new InternalServerErrorException('AI embedding dimensions are invalid');
+        throw new InternalServerErrorException(
+          'AI embedding dimensions are invalid',
+        );
       }
 
       return {
@@ -305,6 +314,45 @@ export class LostPetsService {
         }`,
       );
     }
+  }
+
+  async rebuildEmbeddings() {
+    const pets = await this.lostPetsRepository.findAll();
+    const result = {
+      total: pets.length,
+      updated: 0,
+      skipped: 0,
+      failed: [] as Array<{ id: number; reason: string }>,
+    };
+
+    for (const pet of pets) {
+      const imagePaths = (pet.imageUrls ?? [])
+        .map((imageUrl) => join(getUploadsDir(), basename(imageUrl)))
+        .filter((imagePath) => existsSync(imagePath));
+
+      if (imagePaths.length === 0) {
+        result.skipped += 1;
+        continue;
+      }
+
+      try {
+        const embeddingResult = await this.requestEmbedding(imagePaths);
+        if (!embeddingResult) {
+          result.skipped += 1;
+          continue;
+        }
+
+        await this.saveEmbeddingForPet(pet.id, embeddingResult);
+        result.updated += 1;
+      } catch (error) {
+        result.failed.push({
+          id: pet.id,
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return result;
   }
 
   private getMockMatches(city?: string): MatchResponse['matches'] {
@@ -371,7 +419,9 @@ export class LostPetsService {
       );
       if (embeddingResult) {
         await this.saveEmbeddingForPet(createdPet.id, embeddingResult);
-        createdPet.embedding = this.buildVectorLiteral(embeddingResult.embedding);
+        createdPet.embedding = this.buildVectorLiteral(
+          embeddingResult.embedding,
+        );
         createdPet.embeddingModel = embeddingResult.model;
         createdPet.embeddingFallbackUsed = embeddingResult.fallbackUsed;
         createdPet.embeddingWarning = embeddingResult.warning ?? undefined;
@@ -543,12 +593,8 @@ export class LostPetsService {
     }
 
     const vectorLiteral = this.buildVectorLiteral(embeddingResult.embedding);
-    const params: (string | number)[] = [
-      vectorLiteral,
-      embeddingResult.model,
-    ];
-    let whereClause =
-      'where "embedding" is not null and "embedding_model" = ?';
+    const params: (string | number)[] = [vectorLiteral, embeddingResult.model];
+    let whereClause = 'where "embedding" is not null and "embedding_model" = ?';
 
     if (city?.trim()) {
       whereClause += ' and lower("city") = lower(?)';

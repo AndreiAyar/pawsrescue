@@ -22,23 +22,8 @@ type ScanFormProps = {
     empty: string;
     resultsTitle: string;
     openListing: string;
-    embeddingTitle: string;
-    embeddingPending: string;
-    embeddingModel: string;
-    embeddingFallback: string;
-    embeddingYes: string;
-    embeddingNo: string;
-    embeddingWarning: string;
     matchPercent: string;
-    matchDistance: string;
-    matchDistanceHint: string;
   };
-};
-
-type QueryEmbeddingInfo = {
-  model: string;
-  fallbackUsed: boolean;
-  warning: string | null;
 };
 
 function getMatchPercent(score: number) {
@@ -67,9 +52,6 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
   const [photos, setPhotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [queryEmbedding, setQueryEmbedding] = useState<QueryEmbeddingInfo | null>(
-    null
-  );
   const [results, setResults] = useState<
     Array<{
       id: number;
@@ -86,7 +68,6 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
     setSubmitting(true);
     setError("");
     setResults([]);
-    setQueryEmbedding(null);
 
     const payload = new FormData();
     if (city.trim()) {
@@ -103,30 +84,18 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data?.message ?? data?.detail ?? "Could not scan for matches.");
+        setError(
+          data?.message ?? data?.detail ?? "Could not scan for matches.",
+        );
         return;
       }
 
-      setQueryEmbedding(
-        data?.queryEmbedding &&
-          typeof data.queryEmbedding.model === "string" &&
-          typeof data.queryEmbedding.fallbackUsed === "boolean"
-          ? {
-              model: data.queryEmbedding.model,
-              fallbackUsed: data.queryEmbedding.fallbackUsed,
-              warning:
-                typeof data.queryEmbedding.warning === "string"
-                  ? data.queryEmbedding.warning
-                  : null,
-            }
-          : null
-      );
       setResults(Array.isArray(data?.matches) ? data.matches : []);
     } catch (scanError) {
       setError(
         scanError instanceof Error
           ? scanError.message
-          : "Could not scan for matches."
+          : "Could not scan for matches.",
       );
     } finally {
       setSubmitting(false);
@@ -174,7 +143,9 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                     maxFiles={4}
                     onChange={(event) => {
                       setPhotos(
-                        event.target.files ? Array.from(event.target.files) : []
+                        event.target.files
+                          ? Array.from(event.target.files)
+                          : [],
                       );
                     }}
                   />
@@ -210,38 +181,6 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
               </span>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {labels.embeddingTitle}
-              </p>
-              {queryEmbedding ? (
-                <div className="mt-2 space-y-1">
-                  <p>
-                    <span className="font-semibold">{labels.embeddingModel}:</span>{" "}
-                    {queryEmbedding.model}
-                  </p>
-                  <p>
-                    <span className="font-semibold">
-                      {labels.embeddingFallback}:
-                    </span>{" "}
-                    {queryEmbedding.fallbackUsed
-                      ? labels.embeddingYes
-                      : labels.embeddingNo}
-                  </p>
-                  {queryEmbedding.warning ? (
-                    <p className="text-amber-700">
-                      <span className="font-semibold">
-                        {labels.embeddingWarning}:
-                      </span>{" "}
-                      {queryEmbedding.warning}
-                    </p>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="mt-2 text-slate-600">{labels.embeddingPending}</p>
-              )}
-            </div>
-
             {results.length === 0 ? (
               <p className="mt-4 text-sm text-slate-600">{labels.empty}</p>
             ) : (
@@ -255,7 +194,9 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                       <div className="h-28 w-full overflow-hidden rounded-xl bg-slate-100 sm:w-36">
                         {getResultImageUrl(result.imageUrl) ? (
                           <img
-                            src={getResultImageUrl(result.imageUrl) ?? undefined}
+                            src={
+                              getResultImageUrl(result.imageUrl) ?? undefined
+                            }
                             alt={result.name}
                             className="h-full w-full bg-slate-100 object-contain"
                           />
@@ -269,24 +210,19 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                       <div className="flex-1">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <h3 className="text-lg font-semibold">{result.name}</h3>
+                            <h3 className="text-lg font-semibold">
+                              {result.name}
+                            </h3>
                             <p className="text-sm text-slate-500">
-                              {result.type} {result.city ? `· ${result.city}` : ""}
+                              {result.type}{" "}
+                              {result.city ? `· ${result.city}` : ""}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-800">
-                              {getMatchPercent(result.score)}% {labels.matchPercent}
-                            </span>
-                            <p className="mt-2 text-xs font-semibold uppercase text-amber-800">
-                              {labels.matchDistance} {result.score.toFixed(3)}
-                            </p>
-                          </div>
+                          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-800">
+                            {getMatchPercent(result.score)}%{" "}
+                            {labels.matchPercent}
+                          </span>
                         </div>
-
-                        <p className="mt-2 text-xs text-slate-500">
-                          {labels.matchDistanceHint}
-                        </p>
 
                         <Link
                           href={`/${lang}/pets/${result.id}`}

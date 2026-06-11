@@ -28,8 +28,11 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <html lang={locale}>
-      <body className={`${displayFont.variable} ${bodyFont.variable}`}>
+    <html lang={locale} suppressHydrationWarning>
+      <body
+        className={`${displayFont.variable} ${bodyFont.variable}`}
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>

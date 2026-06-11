@@ -20,7 +20,6 @@ export default async function ReportPage({
         backHome: common("backHome"),
         successTitle: t("successTitle"),
         successBody: t("successBody"),
-        viewApi: t("viewApi"),
         submit: t("submit"),
         submitting: t("submitting"),
         map: {
@@ -43,11 +42,6 @@ export default async function ReportPage({
           flowIdentity: t("ui.flowIdentity"),
           flowContact: t("ui.flowContact"),
           flowPhotos: t("ui.flowPhotos"),
-          apiTitle: t("ui.apiTitle"),
-          visualCheck: t("ui.visualCheck"),
-          visualLineOne: t("ui.visualLineOne"),
-          visualLineTwo: t("ui.visualLineTwo"),
-          visualLineThree: t("ui.visualLineThree"),
         },
         fields: {
           name: t("fields.name"),

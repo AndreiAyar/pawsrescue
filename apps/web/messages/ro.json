@@ -6,72 +6,42 @@
       "scan": "Scaneaza"
     },
     "hero": {
-      "kicker": "Harta prietenoasa pentru animale",
       "title": "Gaseste animalul pierdut mai repede.",
-      "body": "Raporteaza animalul pierdut, vezi harta cu anunturi din orasul tau si scaneaza poze pentru potriviri rapide."
+      "body": "Raporteaza un animal pierdut sau cauta printre anunturile din apropiere."
     },
     "cta": {
       "report": "Raporteaza animal pierdut",
       "scan": "Scaneaza animal gasit",
       "browse": "Vezi harta live"
     },
-    "stats": {
-      "active": "Anunturi active",
-      "matches": "Potriviri luna curenta",
-      "cities": "Orase acoperite"
-    },
     "map": {
-      "label": "Harta live cu animale pierdute",
-      "badge": "Cauta animale in zona ta"
+      "badge": "Vezi anunturile",
+      "openListing": "Deschide anuntul"
+    },
+    "stats": {
+      "reports": "Anunturi active",
+      "cities": "Orase"
     },
     "recent": {
       "title": "Raportari recente",
-      "viewAll": "Vezi toate"
+      "viewAll": "Vezi toate",
+      "empty": "Nu exista inca raportari."
     },
     "how": {
       "title": "Cum functioneaza",
-      "oneTitle": "Raportezi",
-      "oneBody": "Adaugi nume, descriere, poze si locatie. Primesti un link de editare pe email.",
-      "twoTitle": "Scanezi",
-      "twoBody": "Incarci poze cu animalul gasit si primesti potriviri in apropiere.",
-      "threeTitle": "Reunesti",
-      "threeBody": "Contactezi proprietarul si primesti alerte daca apar noi potriviri."
-    },
-    "recentItems": [
-      {
-        "name": "Mimi",
-        "city": "Bucuresti",
-        "type": "Pisica",
-        "time": "2h"
-      },
-      {
-        "name": "Rex",
-        "city": "Cluj",
-        "type": "Caine",
-        "time": "5h"
-      },
-      {
-        "name": "Cleo",
-        "city": "Iasi",
-        "type": "Pisica",
-        "time": "1d"
-      }
-    ]
+      "oneTitle": "Raporteaza",
+      "oneBody": "Adauga poze, detalii si ultima locatie cunoscuta.",
+      "twoTitle": "Cauta",
+      "twoBody": "Verifica harta si anunturile din apropiere.",
+      "threeTitle": "Scaneaza",
+      "threeBody": "Incarca poze cu un animal gasit pentru potriviri."
+    }
   },
   "Common": {
     "comingSoon": "In curand",
     "backHome": "Inapoi acasa",
     "apiUnavailable": "Serviciul nu raspunde acum. Poti reincerca in cateva secunde.",
     "listingNotFound": "Anuntul nu a fost gasit.",
-    "embedding": {
-      "title": "Status embedding",
-      "model": "Model",
-      "fallback": "Fallback folosit",
-      "warning": "Avertisment",
-      "yes": "Da",
-      "no": "Nu",
-      "missing": "Nu exista inca metadate de embedding salvate pentru acest anunt."
-    },
     "titles": {
       "report": "Raportare animal pierdut",
       "scan": "Scaneaza animal gasit",
@@ -82,9 +52,7 @@
     }
   },
   "Search": {
-    "eyebrow": "Monitorizare live",
     "subhead": "Vezi raportarile recente, filtreaza zona si apasa un pin pentru detalii rapide.",
-    "live": "Live",
     "filters": {
       "label": "Filtre",
       "city": "Oras",
@@ -95,7 +63,6 @@
     },
     "map": {
       "title": "Harta",
-      "badge": "Clustere",
       "openListing": "Deschide anuntul"
     },
     "location": {
@@ -106,22 +73,6 @@
       "denied": "Localizarea este dezactivata.",
       "hint": "Activeaz-o in Chrome pentru GPS."
     },
-    "legend": {
-      "title": "Legenda clustere",
-      "small": "1–25 raportari",
-      "medium": "25–100 raportari",
-      "large": "100+ raportari"
-    },
-    "alerts": {
-      "title": "Alerte salvate",
-      "body": "Primesti email cand apare o potrivire in apropiere.",
-      "cta": "Creeaza alerta"
-    },
-    "detail": {
-      "title": "Detalii rapide",
-      "body": "Selecteaza un pin pentru nume, status si contact.",
-      "placeholder": "Nicio raportare selectata."
-    },
     "list": {
       "title": "Raportari in apropiere",
       "badge": "Actualizat acum",
@@ -131,10 +82,9 @@
   },
   "Report": {
     "title": "Raporteaza un animal pierdut",
-    "intro": "Completeaza rapid detaliile esentiale si incarca pozele direct in formular. Pentru acest prim MVP pastram fluxul simplu si usor de demo-uit.",
+    "intro": "Completeaza detaliile si locul unde a fost vazut ultima data.",
     "successTitle": "Anunt creat",
     "successBody": "Anuntul a fost salvat cu ID-ul",
-    "viewApi": "Vezi raspunsul API",
     "submit": "Creeaza anuntul",
     "submitting": "Se salveaza...",
     "ui": {
@@ -148,12 +98,7 @@
       "draftHint": "Completeaza detaliile de baza, seteaza pinul pe harta si publica dintr-un singur pas.",
       "flowIdentity": "1. Identitate",
       "flowContact": "2. Contact",
-      "flowPhotos": "3. Poze",
-      "apiTitle": "API",
-      "visualCheck": "Verificare vizuala",
-      "visualLineOne": "Harta controleaza locatia unde a fost vazut ultima data.",
-      "visualLineTwo": "Orasul si nota de locatie pot fi ajustate manual inainte de salvare.",
-      "visualLineThree": "Coordonatele raman sincronizate discret in payload-ul trimis catre API."
+      "flowPhotos": "3. Poze"
     },
     "fields": {
       "name": "Nume animal",
@@ -177,7 +122,7 @@
       "longitude": "26.1025",
       "description": "Pisica gri, speriata, cu zgarda rosie.",
       "petType": "Alege tipul",
-      "photos": "Incarca pana la 4 poze. Le salvam local pentru MVP si le vom trimite la AI prin path-uri de fisier."
+      "photos": "Pana la 4 poze."
     },
     "types": {
       "dog": "Caine",
@@ -188,25 +133,16 @@
   },
   "Scan": {
     "title": "Scaneaza animal gasit",
-    "intro": "Incarca pana la 4 poze si vezi rapid ce anunturi seamana cel mai mult. In modul demo primesti rezultate mock stabile, iar in modul real se foloseste vector search.",
+    "intro": "Incarca poze cu animalul gasit pentru a cauta anunturi similare.",
     "cityLabel": "Oras optional",
     "cityPlaceholder": "Bucuresti",
     "photosLabel": "Poze cu animalul gasit",
-    "photosHint": "Pozele sunt trimise la API, salvate local si apoi citite de serviciul AI din volumul comun.",
+    "photosHint": "Pana la 4 poze.",
     "submit": "Cauta potriviri",
     "submitting": "Se cauta...",
     "empty": "Inca nu exista rezultate. Incarca poze si porneste o cautare.",
     "resultsTitle": "Potriviri",
     "openListing": "Deschide anuntul",
-    "embeddingTitle": "Embedding cautare",
-    "embeddingPending": "Porneste o cautare ca sa vezi ce cale de embedding a fost folosita.",
-    "embeddingModel": "Model",
-    "embeddingFallback": "Fallback folosit",
-    "embeddingYes": "Da",
-    "embeddingNo": "Nu",
-    "embeddingWarning": "Avertisment",
-    "matchPercent": "potrivire",
-    "matchDistance": "Distanta cosinus",
-    "matchDistanceHint": "Similaritatea compara trasaturi DINOv3 centrate pe pisica. Este un scor de cautare, nu o dovada a identitatii."
+    "matchPercent": "potrivire"
   }
 }
