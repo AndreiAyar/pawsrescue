@@ -41,13 +41,15 @@ Status: Partially done
 - `pet details` page connected
 - `search` list section connected
 - embedding metadata is now surfaced in pet details
-- still needs end-to-end runtime verification in Docker/Browser
+- local real-mode env has been wired for `api` and `web`
+- still needs end-to-end runtime verification against the live local processes
 
 ### Slice 3: Mock toggle for demo
 Status: Partially done
 - mock clusters
 - mock matches
 - mock list/detail support added in service logic
+- default behavior now points to real mode unless `USE_MOCK_DATA=true` is explicitly set
 - still needs one final consistency pass across all read endpoints
 
 ### Slice 4: AI microservice
@@ -58,7 +60,8 @@ Status: Mostly done
 - fallback embedder remains available so the service still works without model runtime success
 - `apps/ai` is now exposed as a Turborepo workspace task for local dev ergonomics
 - the AI service now uses a pawsmatch-inspired `timm` ensemble (`vit_base_patch16_224_dino` plus `vit_base_patch8_224_dino`) with a deterministic fallback
-- still needs runtime verification with the actual local stack
+- `transformers` is now installed locally in `apps/ai/.venv`
+- still needs one live post-restart verification against the actual local stack
 
 ### Slice 5: Vector search
 Status: Partially done
@@ -67,6 +70,7 @@ Status: Partially done
 - `POST /lost-pets/match` exists
 - embedding dimension upgraded to fit the richer AI embeddings
 - query-time embedding metadata is now surfaced in the scan UI
+- Supabase schema migrations for embedding columns have now been applied
 - still needs runtime verification and quality tuning of embeddings
 
 ### Slice 6: Final polish
@@ -76,7 +80,7 @@ Status: Not started
 - remove obvious demo/runtime friction
 
 ## Confirmed Technical Decisions
-- DB is local Postgres in Docker for MVP.
+- DB can be local Postgres in Docker or the configured Supabase Postgres for local development.
 - AI lives in `apps/ai`, but must reuse and adapt good parts from `[/Users/ayar/Personal Dev/pawsmatch/](/Users/ayar/Personal%20Dev/pawsmatch/)`.
 - Images are uploaded by the user, stored locally for MVP, and shared with AI by file path through a shared volume.
 - No queues, no auth, no email flow, no object storage in v1.
@@ -85,9 +89,7 @@ Status: Not started
 ## Immediate Next Steps
 - Continue from the current branch: `dev`.
 - Review current modified files with `git status`.
-- Verify the current stack locally with Docker if available.
-- Confirm the `pawsmatch`-derived `timm` embedder actually boots and serves in `apps/ai`.
-- Confirm the dual-`timm` ensemble and fallback path produce stable results against a real local upload when Docker or a local runtime is available.
-- Use `GET /health` plus one real `/embed` or `/lost-pets/match` call to confirm whether the main model or fallback path is being used.
-- In a non-sandboxed local terminal, rerun `npm run dev` and confirm `web`, `docs`, `api`, `ui`, and `ai` all stay up together now that the `ai` and `ui styles` blockers are addressed.
-- Only after AI quality is acceptable, do the Browser walkthrough and tighten the remaining flow gaps.
+- Restart `apps/ai` and `apps/api` locally so the latest env and dependency fixes are active.
+- Retry one real `POST /lost-pets/match` flow and confirm the returned embedding metadata after the `transformers` install.
+- Verify the real local flow: `report -> search -> detail -> scan -> match`.
+- Only after local real-mode behavior is stable, do the Browser walkthrough and tighten the remaining flow gaps.
