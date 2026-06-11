@@ -3,8 +3,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, List
 
-from fastapi import FastAPI, HTTPException
 import numpy as np
+from fastapi import FastAPI, HTTPException
 from PIL import Image
 from pydantic import BaseModel
 
@@ -17,24 +17,82 @@ except Exception:  # pragma: no cover - optional runtime dependency
     create_model = None
     transforms = None
 
+try:
+    from transformers import AutoImageProcessor, AutoModel
+except Exception:  # pragma: no cover - optional runtime dependency
+    AutoImageProcessor = None
+    AutoModel = None
+
 
 TARGET_EMBEDDING_DIM = int(os.getenv("AI_TARGET_EMBEDDING_DIM", "768"))
 DEFAULT_MODEL_NAME = os.getenv("AI_MODEL_NAME", "auto").strip() or "auto"
-PAWSMATCH_MODEL_ID = os.getenv(
-    "AI_TIMM_MODEL_NAME",
-    "vit_base_patch16_224_dino",
+TRANSFORMERS_MODEL_NAME = os.getenv(
+    "AI_TRANSFORMERS_MODEL_NAME",
+    "facebook/dinov3-vitl16-pretrain-lvd1689m",
 ).strip()
+TIMM_MODEL_NAMES = [
+    name.strip()
+    for name in os.getenv(
+        "AI_TIMM_MODEL_NAMES",
+        os.getenv(
+            "AI_TIMM_MODEL_NAME",
+            "vit_base_patch16_224_dino,vit_base_patch8_224_dino",
+        ),
+    ).split(",")
+    if name.strip()
+]
 
 RGB_RESIZE = (12, 12)
 GRAY_RESIZE = (12, 12)
 HISTOGRAM_BINS = 8
 GRAYSCALE_HISTOGRAM_BINS = 16
 
-app = FastAPI(title="PawsRescue AI Service", version="0.2.0")
+PRIMARY_MODEL_ALIASES = {"auto", "best", "transformers", "dinov3", "pawsmatch"}
+TIMM_MODEL_ALIASES = {
+    "timm",
+    "dino",
+    "pawsmatch-dino",
+}
+
+app = FastAPI(title="PawsRescue AI Service", version="0.3.0")
 
 
 class EmbedRequest(BaseModel):
     imagePaths: List[str]
+
+
+class TransformersImageEmbedder:
+    def __init__(self, model_name: str):
+        if AutoImageProcessor is None or AutoModel is None:
+            raise RuntimeError("transformers dependencies are not installed")
+
+        self.model_name = model_name
+        self.processor = AutoImageProcessor.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name)
+        self.model = self.model.to("cpu")
+        self.model.eval()
+
+    def embed(self, image: Image.Image) -> np.ndarray:
+        inputs = self.processor(images=image, return_tensors="pt")
+        inputs = {key: value.cpu() for key, value in inputs.items()}
+
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        if hasattr(outputs, "last_hidden_state"):
+            features = outputs.last_hidden_state
+            if features.ndim == 3:
+                return features[:, 0, :].squeeze(0).cpu().numpy()
+            if features.ndim == 2:
+                return features.squeeze(0).cpu().numpy()
+
+        if hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
+            return outputs.pooler_output.squeeze(0).cpu().numpy()
+
+        if hasattr(outputs, "image_embeds") and outputs.image_embeds is not None:
+            return outputs.image_embeds.squeeze(0).cpu().numpy()
+
+        return np.asarray(outputs[0]).flatten()
 
 
 class TimmImageEmbedder:
@@ -83,8 +141,35 @@ class TimmImageEmbedder:
 
 
 @lru_cache(maxsize=2)
+def get_transformers_embedder(model_name: str) -> TransformersImageEmbedder:
+    return TransformersImageEmbedder(model_name)
+
+
+@lru_cache(maxsize=2)
 def get_timm_embedder(model_id: str) -> TimmImageEmbedder:
     return TimmImageEmbedder(model_id)
+
+
+def compute_timm_ensemble_embedding(
+    image: Image.Image,
+    model_names: list[str],
+) -> tuple[np.ndarray | None, list[str]]:
+    embeddings: list[np.ndarray] = []
+    warnings: list[str] = []
+
+    for model_name in model_names:
+        try:
+            embedding = get_timm_embedder(model_name).embed(image)
+        except Exception as error:
+            warnings.append(f"timm model {model_name} failed: {error}")
+            continue
+
+        embeddings.append(normalize_embedding(embedding))
+
+    if not embeddings:
+        return None, warnings
+
+    return normalize_embedding(np.mean(np.stack(embeddings, axis=0), axis=0)), warnings
 
 
 def normalize_embedding(values: np.ndarray) -> np.ndarray:
@@ -167,37 +252,54 @@ def compute_image_embedding(
     requested_model: str,
 ) -> tuple[np.ndarray, str, bool, str | None]:
     normalized_model = requested_model.strip().lower() or "auto"
+    attempt_errors: list[str] = []
 
-    if normalized_model in {"auto", "pawsmatch-dino", "dino"}:
+    if normalized_model in PRIMARY_MODEL_ALIASES:
         try:
-            raw_embedding = get_timm_embedder(PAWSMATCH_MODEL_ID).embed(image)
+            raw_embedding = get_transformers_embedder(TRANSFORMERS_MODEL_NAME).embed(image)
             return (
                 normalize_embedding(raw_embedding),
-                f"pawsmatch-dino:{PAWSMATCH_MODEL_ID}",
+                f"transformers:{TRANSFORMERS_MODEL_NAME}",
                 False,
                 None,
             )
         except Exception as error:
-            fallback_embedding = compute_fallback_embedding(image)
+            attempt_errors.append(f"transformers model failed: {error}")
+
+    if normalized_model in PRIMARY_MODEL_ALIASES | TIMM_MODEL_ALIASES or attempt_errors:
+        raw_embedding, timm_warnings = compute_timm_ensemble_embedding(
+            image,
+            TIMM_MODEL_NAMES,
+        )
+        attempt_errors.extend(timm_warnings)
+        if raw_embedding is not None:
+            warning = attempt_errors[0] if attempt_errors else None
             return (
-                fallback_embedding,
-                "fallback-hybrid",
-                True,
-                str(error),
+                raw_embedding,
+                f"timm:{'+'.join(TIMM_MODEL_NAMES)}",
+                False,
+                warning,
             )
 
-    return compute_fallback_embedding(image), "fallback-hybrid", False, None
+    fallback_embedding = compute_fallback_embedding(image)
+    warning = "; ".join(attempt_errors) if attempt_errors else None
+    return fallback_embedding, "fallback-hybrid", True, warning
 
 
 @app.get("/health")
-def health() -> dict[str, str | int | bool]:
+def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "service": "ai",
         "defaultModel": DEFAULT_MODEL_NAME,
-        "defaultModelId": PAWSMATCH_MODEL_ID,
+        "timmModelIds": TIMM_MODEL_NAMES,
         "embeddingDimensions": TARGET_EMBEDDING_DIM,
-        "timmAvailable": bool(torch is not None and create_model is not None and transforms is not None),
+        "transformersAvailable": bool(
+            AutoImageProcessor is not None and AutoModel is not None
+        ),
+        "timmAvailable": bool(
+            torch is not None and create_model is not None and transforms is not None
+        ),
     }
 
 

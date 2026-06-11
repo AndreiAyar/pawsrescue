@@ -68,7 +68,7 @@ services:
     environment:
       AI_PORT: ${AI_PORT:-8000}
       AI_MODEL_NAME: ${AI_MODEL_NAME:-auto}
-      AI_TIMM_MODEL_NAME: ${AI_TIMM_MODEL_NAME:-vit_base_patch16_224_dino}
+      AI_TIMM_MODEL_NAMES: ${AI_TIMM_MODEL_NAMES:-vit_base_patch16_224_dino,vit_base_patch8_224_dino}
       AI_TARGET_EMBEDDING_DIM: ${AI_TARGET_EMBEDDING_DIM:-768}
     ports:
       - "${AI_PORT:-8000}:8000"

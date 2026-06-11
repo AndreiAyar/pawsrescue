@@ -23,6 +23,12 @@ async function main() {
 
   console.log("AI health");
   console.log(JSON.stringify(health, null, 2));
+  console.log("");
+  console.log(
+    `Model availability: transformers=${Boolean(
+      health.transformersAvailable,
+    )}, timm=${Boolean(health.timmAvailable)}`,
+  );
 
   if (!imagePathArg) {
     console.log("");

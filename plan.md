@@ -25,6 +25,7 @@ Status: Done
 - Docker Compose skeleton exists.
 - Service-level env examples exist.
 - AI service shell exists.
+- `apps/ai` is now also wired into the Turborepo dev flow for local development.
 
 ### Slice 1: Real lost-pet create flow
 Status: Done
@@ -55,6 +56,8 @@ Status: Mostly done
 - local image-path contract exists
 - primary embedder now adapts the DINO/timm path from `pawsmatch`
 - fallback embedder remains available so the service still works without model runtime success
+- `apps/ai` is now exposed as a Turborepo workspace task for local dev ergonomics
+- the AI service now uses a pawsmatch-inspired `timm` ensemble (`vit_base_patch16_224_dino` plus `vit_base_patch8_224_dino`) with a deterministic fallback
 - still needs runtime verification with the actual local stack
 
 ### Slice 5: Vector search
@@ -84,5 +87,7 @@ Status: Not started
 - Review current modified files with `git status`.
 - Verify the current stack locally with Docker if available.
 - Confirm the `pawsmatch`-derived `timm` embedder actually boots and serves in `apps/ai`.
+- Confirm the dual-`timm` ensemble and fallback path produce stable results against a real local upload when Docker or a local runtime is available.
 - Use `GET /health` plus one real `/embed` or `/lost-pets/match` call to confirm whether the main model or fallback path is being used.
+- In a non-sandboxed local terminal, rerun `npm run dev` and confirm `web`, `docs`, `api`, `ui`, and `ai` all stay up together now that the `ai` and `ui styles` blockers are addressed.
 - Only after AI quality is acceptable, do the Browser walkthrough and tighten the remaining flow gaps.

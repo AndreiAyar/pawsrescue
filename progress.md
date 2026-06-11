@@ -23,6 +23,10 @@ Done
 - Replaced the simple RGB embedder with a richer AI embedding flow in `apps/ai`:
   - primary path adapted from `[/Users/ayar/Personal Dev/pawsmatch/compare.py](/Users/ayar/Personal%20Dev/pawsmatch/compare.py)` using a `timm` DINO image model
   - deterministic local fallback embedder kept in place so the service still works when the model is unavailable
+- Strengthened the AI embedding path with a pawsmatch-inspired `timm` ensemble:
+  - `vit_base_patch16_224_dino` remains the primary backbone
+  - `vit_base_patch8_224_dino` is now tried alongside it and the successful embeddings are averaged
+  - the service still falls back to the deterministic local embedder if the model load path is unavailable
 - Expanded pgvector storage from `vector(3)` to `vector(768)` with a follow-up migration that clears old incompatible MVP embeddings before resizing the column.
 - Added persistent embedding tracking fields on lost pets:
   - `embedding_model`
@@ -41,9 +45,24 @@ Done
   - `npm run check:ai`
   - optional usage: `node scripts/check-ai-runtime.mjs /absolute/path/to/image.jpg`
   - this checks `/health` and can also verify `/embed` against a real shared file path
+- Connected `apps/ai` to the Turborepo workspace flow with a local `package.json`:
+  - `npm run --workspace ai check` works
+  - `npm run --workspace ai dev` now resolves as a real workspace task
+  - local runtime still depends on Python packages such as `uvicorn` being installed in the active Python environment
+- Added local AI bootstrap scripts under `apps/ai/scripts`:
+  - `npm run --workspace ai setup` creates `.venv` and installs Python requirements
+  - `npm run --workspace ai dev` and `start` now run through the local `.venv`
+- Verified AI local bootstrap end-to-end:
+  - initial blocker was missing Python packages
+  - after setup, `ai` is no longer the failing task in `npm run dev`
+- Replaced the fragile `@repo/ui` Tailwind watch command with a small polling-based watcher script so `dev:styles` no longer depends on FSEvents.
 - Verified Python syntax for `apps/ai/main.py`.
 - Verified `npm run --workspace api build` still passes after the embedding integration changes.
 - Verified the helper script syntax and confirmed it currently fails with `fetch failed` when the AI service is not running in this local session.
+- Verified `npm run dev` now gets past both `ai#dev` and `@repo/ui#dev:styles`; in this local session the next blocker is sandbox port binding for `web` and `docs` (`listen EPERM` on ports `3000` and `3001`).
+- Verified the AI service in-process with a real uploaded image path through FastAPI's test client:
+  - `/health` returns the expected model metadata
+  - `/embed` returns a 768-dim vector and degrades cleanly to the deterministic fallback in this offline sandbox
 
 In Progress
 - Consolidating read-side behavior so mock mode and real mode are consistent across list, detail, match, and clusters.
@@ -74,10 +93,15 @@ Important Files
 - `apps/web/app/[lang]/search/page.tsx`
 - `apps/web/app/[lang]/pets/[id]/page.tsx`
 - `apps/ai/main.py`
+- `apps/ai/package.json`
 - `apps/ai/requirements.txt`
+- `apps/ai/scripts/setup-venv.sh`
+- `apps/ai/scripts/run-python.sh`
+- `apps/ai/scripts/run-uvicorn.sh`
 - `apps/api/src/migrations/Migration20260611101500.ts`
 - `apps/api/src/migrations/Migration20260611113000.ts`
 - `docker-compose.yml`
+- `packages/ui/scripts/dev-styles.mjs`
 - `scripts/check-ai-runtime.mjs`
 
 Notes
