@@ -24,6 +24,8 @@ type MapProps = {
     street?: string;
     city?: string;
     label: string;
+    latitude?: number;
+    longitude?: number;
   }) => void;
   locateLabel?: string;
   locatingLabel?: string;
@@ -282,7 +284,13 @@ export default function MapView({
           features[0]?.place_name ||
           "";
 
-        onLocationChange({ street, city, label });
+        onLocationChange({
+          street,
+          city,
+          label,
+          latitude: lat,
+          longitude: lng,
+        });
       } catch (error) {
         if ((error as { name?: string }).name === "AbortError") {
           return;
@@ -856,17 +864,16 @@ export default function MapView({
             mapController={mapController}
             onSelect={(selected) => {
               const feature = selected?.feature;
-              if (feature?.geometry?.type === "Point" && markerRef.current) {
+              if (feature?.geometry?.type === "Point") {
                 const [lng, lat] = feature.geometry.coordinates;
                 if (typeof lng === "number" && typeof lat === "number") {
-                  //Skip for the moment
-                  //   markerRef.current.setLngLat([lng, lat]);
-                  //   // Optionally center the map on the new location
-                  //   map.current?.easeTo({
-                  //     center: [lng, lat],
-                  //     zoom: 15,
-                  //     duration: 1000
-                  //   });
+                  updatePosition(lng, lat);
+                  map.current?.easeTo({
+                    center: [lng, lat],
+                    zoom: Math.max(map.current?.getZoom() ?? 0, 15),
+                    duration: 700,
+                  });
+                  triggerReverseGeocode(lng, lat);
                 }
               }
             }}

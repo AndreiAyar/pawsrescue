@@ -92,7 +92,7 @@ export default async function PetDetailPage({
               <img
                 src={getPetImageUrl(pet.imageUrls[0]) ?? undefined}
                 alt={pet.name}
-                className="mt-5 h-72 w-full rounded-2xl object-cover"
+                className="mt-5 h-72 w-full rounded-2xl bg-slate-100 object-contain"
               />
             ) : null}
 

@@ -7,6 +7,7 @@ import { FileUpload } from "@repo/ui/fileUpload";
 import { FormField } from "@repo/ui/formField";
 import { Input } from "@repo/ui/input";
 import { Select } from "@repo/ui/select";
+import ReportLocationPicker from "./ReportLocationPicker";
 
 type ReportFormProps = {
   lang: string;
@@ -19,6 +20,32 @@ type ReportFormProps = {
     viewApi: string;
     submit: string;
     submitting: string;
+    map: {
+      locationLabel: string;
+      locationPlaceholder: string;
+      locate: string;
+      locating: string;
+      denied: string;
+      hint: string;
+    };
+    ui: {
+      mapEyebrow: string;
+      mapTitle: string;
+      mapBadge: string;
+      quickStatus: string;
+      lastSeenArea: string;
+      cityAuto: string;
+      photosSelected: string;
+      draftHint: string;
+      flowIdentity: string;
+      flowContact: string;
+      flowPhotos: string;
+      apiTitle: string;
+      visualCheck: string;
+      visualLineOne: string;
+      visualLineTwo: string;
+      visualLineThree: string;
+    };
     fields: {
       name: string;
       type: string;
@@ -71,8 +98,8 @@ const initialState: FormState = {
   phone: "",
   city: "",
   rawLocation: "",
-  latitude: "44.4268",
-  longitude: "26.1025",
+  latitude: "44.426800",
+  longitude: "26.102500",
   description: "",
 };
 
@@ -81,7 +108,7 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
   const [photos, setPhotos] = useState<File[]>([]);
   const [uploadResetKey, setUploadResetKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
   const [createdPet, setCreatedPet] = useState<null | {
     id: number;
     name: string;
@@ -158,7 +185,7 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
 
   return (
     <main className="min-h-screen bg-warm-texture text-slate-900">
-      <div className="mx-auto max-w-4xl px-6 py-12">
+      <div className="mx-auto max-w-6xl px-6 py-10 sm:py-12">
         <div className="mb-8">
           <Link
             href={`/${lang}`}
@@ -174,11 +201,124 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
           </p>
         </div>
 
+        <div className="mb-6 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+          <ReportLocationPicker
+            addressLabel={labels.map.locationLabel}
+            addressPlaceholder={labels.map.locationPlaceholder}
+            locateLabel={labels.map.locate}
+            locatingLabel={labels.map.locating}
+            locationDenied={labels.map.denied}
+            locationHint={labels.map.hint}
+            eyebrow={labels.ui.mapEyebrow}
+            title={labels.ui.mapTitle}
+            badge={labels.ui.mapBadge}
+            onLocationChange={(next) => {
+              setForm((current) => ({
+                ...current,
+                rawLocation: next.label || current.rawLocation,
+                city: next.city || current.city,
+                latitude:
+                  typeof next.latitude === "number"
+                    ? next.latitude.toFixed(6)
+                    : current.latitude,
+                longitude:
+                  typeof next.longitude === "number"
+                    ? next.longitude.toFixed(6)
+                    : current.longitude,
+              }));
+            }}
+          />
+
+          <aside className="grid gap-4">
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white/85 p-5 shadow-[0_20px_38px_-28px_rgba(15,23,42,0.36)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                {labels.ui.quickStatus}
+              </p>
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+                    {labels.ui.lastSeenArea}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {form.rawLocation || labels.map.locationPlaceholder}
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      {labels.fields.city}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {form.city || labels.ui.cityAuto}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      {labels.fields.photos}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {photos.length} / 4 {labels.ui.photosSelected}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                  {labels.fields.latitude}: {form.latitude}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                  {labels.fields.longitude}: {form.longitude}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50/85 p-5 shadow-[0_18px_34px_-26px_rgba(16,185,129,0.35)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-900">
+                {labels.successTitle}
+              </p>
+              {createdPet ? (
+                <div className="mt-3 space-y-3 text-sm text-emerald-950">
+                  <p>
+                    {labels.successBody} <strong>#{createdPet.id}</strong>
+                  </p>
+                  <p>
+                    {createdPet.name}
+                    {createdPet.city ? ` · ${createdPet.city}` : ""}
+                  </p>
+                  <Link
+                    href={`/api/lost-pets/${createdPet.id}`}
+                    target="_blank"
+                    className="inline-block font-semibold underline decoration-2 underline-offset-4"
+                  >
+                    {labels.viewApi}
+                  </Link>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-emerald-900/80">
+                  {labels.ui.draftHint}
+                </p>
+              )}
+            </div>
+          </aside>
+        </div>
+
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <form
             onSubmit={handleSubmit}
-            className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]"
+            className="rounded-[1.75rem] border border-slate-200 bg-white/85 p-6 shadow-[0_22px_38px_-28px_rgba(31,41,55,0.4)]"
           >
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-800">
+                {labels.ui.flowIdentity}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                {labels.ui.flowContact}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                {labels.ui.flowPhotos}
+              </span>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label={labels.fields.name} name="name">
                 <Input
@@ -237,33 +377,10 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
                   placeholder={labels.placeholders.location}
                 />
               </FormField>
-
-              <FormField label={labels.fields.latitude} name="latitude">
-                <Input
-                  id="latitude"
-                  type="number"
-                  step="0.000001"
-                  value={form.latitude}
-                  onChange={(event) =>
-                    updateField("latitude", event.target.value)
-                  }
-                  placeholder={labels.placeholders.latitude}
-                />
-              </FormField>
-
-              <FormField label={labels.fields.longitude} name="longitude">
-                <Input
-                  id="longitude"
-                  type="number"
-                  step="0.000001"
-                  value={form.longitude}
-                  onChange={(event) =>
-                    updateField("longitude", event.target.value)
-                  }
-                  placeholder={labels.placeholders.longitude}
-                />
-              </FormField>
             </div>
+
+            <input type="hidden" name="latitude" value={form.latitude} />
+            <input type="hidden" name="longitude" value={form.longitude} />
 
             <div className="mt-4 grid gap-4">
               <FormField label={labels.fields.description} name="description">
@@ -275,7 +392,7 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
                   }
                   placeholder={labels.placeholders.description}
                   rows={4}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm outline-0 hover:border-gray-400"
+                  className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-0 hover:border-gray-400"
                 />
               </FormField>
 
@@ -311,7 +428,7 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
               type="submit"
               buttonType="peach"
               className="mt-6"
-              innerClassName="w-full sm:w-auto"
+              innerClassName="w-full px-8 sm:w-auto"
               disabled={submitting}
             >
               {submitting ? labels.submitting : labels.submit}
@@ -319,9 +436,9 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
           </form>
 
           <aside className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white/85 p-5 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                API
+                {labels.ui.apiTitle}
               </p>
               <p className="mt-2 text-sm text-slate-700">
                 This slice creates a real listing and returns it from the API.
@@ -330,32 +447,15 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 shadow-[0_18px_30px_-24px_rgba(16,185,129,0.35)]">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">
-                {labels.successTitle}
+            <div className="rounded-[1.75rem] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,250,245,0.9),rgba(255,255,255,0.95))] p-5 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {labels.ui.visualCheck}
               </p>
-              {createdPet ? (
-                <div className="mt-3 space-y-3 text-sm text-emerald-950">
-                  <p>
-                    {labels.successBody} <strong>#{createdPet.id}</strong>
-                  </p>
-                  <p>
-                    {createdPet.name}
-                    {createdPet.city ? ` · ${createdPet.city}` : ""}
-                  </p>
-                  <Link
-                    href={`/api/lost-pets/${createdPet.id}`}
-                    target="_blank"
-                    className="inline-block font-semibold underline decoration-2 underline-offset-4"
-                  >
-                    {labels.viewApi}
-                  </Link>
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-emerald-900/80">
-                  Create a listing and the new record will appear here.
-                </p>
-              )}
+              <div className="mt-3 space-y-3 text-sm text-slate-700">
+                <p>{labels.ui.visualLineOne}</p>
+                <p>{labels.ui.visualLineTwo}</p>
+                <p>{labels.ui.visualLineThree}</p>
+              </div>
             </div>
           </aside>
         </div>

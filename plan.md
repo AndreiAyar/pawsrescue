@@ -91,7 +91,9 @@ Status: Not started
 
 ## Immediate Next Steps
 - Continue from the current branch: `dev`.
-- Verify the actual web UI against the real API flow:
+- Do one final browser walkthrough against the already-running local web app:
   - `report -> search -> detail -> scan -> match`
 - Decide whether `AI_OFFLINE_MODEL_LOAD` should remain opt-in only or be set in any local env for offline development.
-- Finish the last mock/real consistency pass after the UI walkthrough.
+- After that, decide whether to stop at MVP-complete or do one small follow-up slice:
+  - ranking quality tuning
+  - repo cleanup for unrelated type/test failures

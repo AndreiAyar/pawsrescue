@@ -257,7 +257,7 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                           <img
                             src={getResultImageUrl(result.imageUrl) ?? undefined}
                             alt={result.name}
-                            className="h-full w-full object-cover"
+                            className="h-full w-full bg-slate-100 object-contain"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center text-xs text-slate-400">

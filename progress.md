@@ -166,12 +166,29 @@ Latest update
   - verified the proxied image URLs return `200 OK`
   - verified the pet detail page has a live `<img>` after reload in the browser
 
+Latest update
+- Re-verified the current branch and live local services on `dev`:
+  - working tree is clean
+  - `ai` health on `127.0.0.1:8000` returns the latest embedding contract
+  - `GET /lost-pets` on `:3015` returns real rows with embedding metadata
+  - `POST /lost-pets/match` with a real uploaded local file returns the full live ensemble path:
+    - `ensemble:transformers:facebook/dinov3-vitl16-pretrain-lvd1689m+timm:vit_base_patch16_224_dino+vit_base_patch8_224_dino`
+  - `fallbackUsed` is `false` on the live verified match response
+  - `npm run --workspace api build` passes
+  - `npm run --workspace api test -- lost-pets.service.spec.ts --runInBand` passes
+- Confirmed the main MVP slice is effectively done:
+  - pawsmatch-derived embedding logic is integrated in `apps/ai`
+  - real `scan -> match` runtime is healthy
+  - report/search/scan routes render locally
+- Confirmed the branch is not fully "gold" at whole-repo level yet:
+  - `npm run check-types` still fails in `apps/docs/app/page.tsx`
+  - error: `Button` is being passed an `appName` prop that does not exist on `ButtonProps`
+
 Next Up
-- Optionally do one final happy-path browser pass for `report -> search -> detail -> scan -> match` after the latest image fixes, mainly for demo confidence rather than implementation risk.
+- Do one final happy-path browser pass for `report -> search -> detail -> scan -> match` for demo confidence.
 - If we want one more post-MVP improvement, tune match quality/ranking:
   - current live scan test returned multiple cat listings with the same displayed distance bucket, so ranking relevance can still be improved even though the wiring works
 - Decide whether the local default AI runtime should keep remote model downloads enabled or whether `AI_OFFLINE_MODEL_LOAD` should be enabled in any local env defaults.
-- Finish the last mock/real consistency pass for any remaining read endpoints.
 - Clean up existing unrelated TypeScript issues so builds/checks are easier to trust.
 
 Known Issues
@@ -179,6 +196,8 @@ Known Issues
   - `apps/api/test/app.e2e-spec.ts`
 - Existing unrelated web TypeScript errors:
   - `apps/web/app/components/Map/clusterCache.ts`
+- Existing unrelated docs TypeScript error:
+  - `apps/docs/app/page.tsx`
 - Existing unrelated API Jest failure:
   - `apps/api/src/app.controller.spec.ts` still expects `"Hello World!"` while the app returns `"PawsRescue API"`
 - Full browser-style verification of the Next.js UI still depends on a reachable `web` process; this turn verified the real API/AI flow directly over HTTP instead.

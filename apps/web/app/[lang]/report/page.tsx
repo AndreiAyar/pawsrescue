@@ -9,6 +9,7 @@ export default async function ReportPage({
   const { lang } = await params;
   const t = await getTranslations({ locale: lang, namespace: "Report" });
   const common = await getTranslations({ locale: lang, namespace: "Common" });
+  const search = await getTranslations({ locale: lang, namespace: "Search" });
 
   return (
     <ReportForm
@@ -22,6 +23,32 @@ export default async function ReportPage({
         viewApi: t("viewApi"),
         submit: t("submit"),
         submitting: t("submitting"),
+        map: {
+          locationLabel: search("location.label"),
+          locationPlaceholder: search("location.placeholder"),
+          locate: search("location.locate"),
+          locating: search("location.locating"),
+          denied: search("location.denied"),
+          hint: search("location.hint"),
+        },
+        ui: {
+          mapEyebrow: t("ui.mapEyebrow"),
+          mapTitle: t("ui.mapTitle"),
+          mapBadge: t("ui.mapBadge"),
+          quickStatus: t("ui.quickStatus"),
+          lastSeenArea: t("ui.lastSeenArea"),
+          cityAuto: t("ui.cityAuto"),
+          photosSelected: t("ui.photosSelected"),
+          draftHint: t("ui.draftHint"),
+          flowIdentity: t("ui.flowIdentity"),
+          flowContact: t("ui.flowContact"),
+          flowPhotos: t("ui.flowPhotos"),
+          apiTitle: t("ui.apiTitle"),
+          visualCheck: t("ui.visualCheck"),
+          visualLineOne: t("ui.visualLineOne"),
+          visualLineTwo: t("ui.visualLineTwo"),
+          visualLineThree: t("ui.visualLineThree"),
+        },
         fields: {
           name: t("fields.name"),
           type: t("fields.type"),
