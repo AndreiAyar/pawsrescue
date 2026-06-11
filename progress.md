@@ -63,10 +63,31 @@ Done
 - Verified the AI service in-process with a real uploaded image path through FastAPI's test client:
   - `/health` returns the expected model metadata
   - `/embed` returns a 768-dim vector and degrades cleanly to the deterministic fallback in this offline sandbox
+- Switched the default runtime direction to real mode:
+  - `USE_MOCK_DATA=false` is now the default in env examples and Docker Compose
+  - mock mode remains available only when explicitly enabled with `USE_MOCK_DATA=true`
+- Fixed the mock toggle behavior in API service logic:
+  - unset `USE_MOCK_DATA` no longer silently falls back to mock mode
+- Updated actual local runtime env files for local development:
+  - `apps/api/.env.development.local` now includes `PORT`, `AI_SERVICE_URL`, `USE_MOCK_DATA=false`, and `UPLOAD_DIR`
+  - `apps/web/.env.development` now includes `API_URL=http://localhost:3015`
+- Applied pending MikroORM migrations directly against the configured Supabase database:
+  - `Migration20260610221500`
+  - `Migration20260611101500`
+  - `Migration20260611113000`
+- Fixed local upload-path resolution between API and AI:
+  - API now resolves relative `UPLOAD_DIR` values to absolute local paths
+  - AI now resolves relative incoming image paths more safely for local runs
+- Improved matcher error visibility in API:
+  - AI request failures now surface explicit messages
+  - vector query failures now surface explicit SQL-related messages instead of a generic 500
+- Installed the missing `transformers` runtime into `apps/ai/.venv`
+  - `apps/ai/requirements.txt` now includes `transformers==4.56.0`
+  - verified import with `transformers.__version__ == 4.56.0`
 
 In Progress
 - Consolidating read-side behavior so mock mode and real mode are consistent across list, detail, match, and clusters.
-- Full local runtime verification of the upgraded AI path still needs Docker or an equivalent local service run.
+- Final local runtime verification still needs a clean restart of `ai` and `api` on the user's machine and one real `scan -> match` retry after the latest fixes.
 
 Latest update
 - Tightened read-side API consistency in `apps/api/src/lost-pets/lost-pets.service.ts`:
@@ -80,11 +101,17 @@ Latest update
   - covers real list/detail normalization with embedding metadata
   - covers real match normalization with query embedding metadata
   - verified with `npm run --workspace api test -- lost-pets.service.spec.ts --runInBand`
+- Completed the local real-mode unblockers:
+  - migrated the Supabase schema so `lost_pets.embedding` and related columns now exist
+  - fixed local `AI_SERVICE_URL` / `USE_MOCK_DATA` runtime env settings
+  - fixed relative upload paths so AI can find locally uploaded matcher images
+  - installed `transformers` so the primary AI path no longer warns that the dependency is missing
 
 Next Up
-- Verify the full local stack with Docker and Browser: `report -> create -> search -> detail -> scan -> match`.
-- Confirm the `timm` model downloads and serves correctly in the AI container, then compare a couple of real match results against the fallback path.
-- Finish the mock/real consistency pass for read endpoints.
+- Restart `apps/ai` and `apps/api`, then retry a real `scan -> match` request locally.
+- Confirm whether the AI response now uses the intended primary path without the old `transformers dependencies are not installed` warning.
+- Verify the full local flow in real mode: `report -> create -> search -> detail -> scan -> match`.
+- Finish the last mock/real consistency pass for any remaining read endpoints.
 - Clean up existing unrelated TypeScript issues so builds/checks are easier to trust.
 
 Known Issues
@@ -94,7 +121,7 @@ Known Issues
   - `apps/web/app/components/Map/clusterCache.ts`
 - Existing unrelated API Jest failure:
   - `apps/api/src/app.controller.spec.ts` still expects `"Hello World!"` while the app returns `"PawsRescue API"`
-- Docker/Browser verification could not be completed inside this local session because `docker` was not available in PATH here.
+- Full browser-style verification still depends on the user's live local processes rather than this sandbox.
 
 Important Files
 - `apps/api/src/lost-pets/lost-pets.controller.ts`
@@ -121,3 +148,4 @@ Notes
 - The user wants the MVP to stay very simple, easy to follow, and minimally invasive.
 - Demo mode must remain available via `USE_MOCK_DATA=true|false`.
 - Images should be uploaded by the user, saved locally for MVP, and passed to AI by shared file path.
+- The active real local database is Supabase, and MikroORM migrations were applied directly against it from `apps/api`.
