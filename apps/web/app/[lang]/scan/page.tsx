@@ -26,6 +26,13 @@ export default async function ScanPage({
         empty: t("empty"),
         resultsTitle: t("resultsTitle"),
         openListing: t("openListing"),
+        embeddingTitle: t("embeddingTitle"),
+        embeddingPending: t("embeddingPending"),
+        embeddingModel: t("embeddingModel"),
+        embeddingFallback: t("embeddingFallback"),
+        embeddingYes: t("embeddingYes"),
+        embeddingNo: t("embeddingNo"),
+        embeddingWarning: t("embeddingWarning"),
       }}
     />
   );

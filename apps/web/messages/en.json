@@ -61,6 +61,15 @@
   "Common": {
     "comingSoon": "Coming soon",
     "backHome": "Back home",
+    "embedding": {
+      "title": "Embedding status",
+      "model": "Model",
+      "fallback": "Fallback used",
+      "warning": "Warning",
+      "yes": "Yes",
+      "no": "No",
+      "missing": "No embedding metadata saved for this listing yet."
+    },
     "titles": {
       "report": "Report lost pet",
       "scan": "Scan found pet",
@@ -166,6 +175,13 @@
     "submitting": "Searching...",
     "empty": "No results yet. Upload photos and start a search.",
     "resultsTitle": "Matches",
-    "openListing": "Open listing"
+    "openListing": "Open listing",
+    "embeddingTitle": "Search embedding",
+    "embeddingPending": "Run a search to see which embedding path was used.",
+    "embeddingModel": "Model",
+    "embeddingFallback": "Fallback used",
+    "embeddingYes": "Yes",
+    "embeddingNo": "No",
+    "embeddingWarning": "Warning"
   }
 }

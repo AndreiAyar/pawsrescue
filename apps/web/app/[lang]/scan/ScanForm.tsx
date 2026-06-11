@@ -22,7 +22,20 @@ type ScanFormProps = {
     empty: string;
     resultsTitle: string;
     openListing: string;
+    embeddingTitle: string;
+    embeddingPending: string;
+    embeddingModel: string;
+    embeddingFallback: string;
+    embeddingYes: string;
+    embeddingNo: string;
+    embeddingWarning: string;
   };
+};
+
+type QueryEmbeddingInfo = {
+  model: string;
+  fallbackUsed: boolean;
+  warning: string | null;
 };
 
 export default function ScanForm({ lang, labels }: ScanFormProps) {
@@ -30,6 +43,9 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
   const [photos, setPhotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [queryEmbedding, setQueryEmbedding] = useState<QueryEmbeddingInfo | null>(
+    null
+  );
   const [results, setResults] = useState<
     Array<{
       id: number;
@@ -46,6 +62,7 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
     setSubmitting(true);
     setError("");
     setResults([]);
+    setQueryEmbedding(null);
 
     const payload = new FormData();
     if (city.trim()) {
@@ -66,6 +83,20 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
         return;
       }
 
+      setQueryEmbedding(
+        data?.queryEmbedding &&
+          typeof data.queryEmbedding.model === "string" &&
+          typeof data.queryEmbedding.fallbackUsed === "boolean"
+          ? {
+              model: data.queryEmbedding.model,
+              fallbackUsed: data.queryEmbedding.fallbackUsed,
+              warning:
+                typeof data.queryEmbedding.warning === "string"
+                  ? data.queryEmbedding.warning
+                  : null,
+            }
+          : null
+      );
       setResults(Array.isArray(data?.matches) ? data.matches : []);
     } catch (scanError) {
       setError(
@@ -153,6 +184,38 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
                 {results.length}
               </span>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {labels.embeddingTitle}
+              </p>
+              {queryEmbedding ? (
+                <div className="mt-2 space-y-1">
+                  <p>
+                    <span className="font-semibold">{labels.embeddingModel}:</span>{" "}
+                    {queryEmbedding.model}
+                  </p>
+                  <p>
+                    <span className="font-semibold">
+                      {labels.embeddingFallback}:
+                    </span>{" "}
+                    {queryEmbedding.fallbackUsed
+                      ? labels.embeddingYes
+                      : labels.embeddingNo}
+                  </p>
+                  {queryEmbedding.warning ? (
+                    <p className="text-amber-700">
+                      <span className="font-semibold">
+                        {labels.embeddingWarning}:
+                      </span>{" "}
+                      {queryEmbedding.warning}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-2 text-slate-600">{labels.embeddingPending}</p>
+              )}
             </div>
 
             {results.length === 0 ? (

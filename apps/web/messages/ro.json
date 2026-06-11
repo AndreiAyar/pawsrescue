@@ -61,6 +61,15 @@
   "Common": {
     "comingSoon": "In curand",
     "backHome": "Inapoi acasa",
+    "embedding": {
+      "title": "Status embedding",
+      "model": "Model",
+      "fallback": "Fallback folosit",
+      "warning": "Avertisment",
+      "yes": "Da",
+      "no": "Nu",
+      "missing": "Nu exista inca metadate de embedding salvate pentru acest anunt."
+    },
     "titles": {
       "report": "Raportare animal pierdut",
       "scan": "Scaneaza animal gasit",
@@ -166,6 +175,13 @@
     "submitting": "Se cauta...",
     "empty": "Inca nu exista rezultate. Incarca poze si porneste o cautare.",
     "resultsTitle": "Potriviri",
-    "openListing": "Deschide anuntul"
+    "openListing": "Deschide anuntul",
+    "embeddingTitle": "Embedding cautare",
+    "embeddingPending": "Porneste o cautare ca sa vezi ce cale de embedding a fost folosita.",
+    "embeddingModel": "Model",
+    "embeddingFallback": "Fallback folosit",
+    "embeddingYes": "Da",
+    "embeddingNo": "Nu",
+    "embeddingWarning": "Avertisment"
   }
 }
