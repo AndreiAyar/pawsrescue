@@ -68,6 +68,12 @@ In Progress
 - Consolidating read-side behavior so mock mode and real mode are consistent across list, detail, match, and clusters.
 - Full local runtime verification of the upgraded AI path still needs Docker or an equivalent local service run.
 
+Latest update
+- Tightened read-side API consistency in `apps/api/src/lost-pets/lost-pets.service.ts`:
+  - mock list/detail now go through the same normalizer as real records
+  - mock match responses now return the same top-level shape as real match responses, including `queryEmbedding: null`
+  - verified `npm run --workspace api build` still passes after the contract cleanup
+
 Next Up
 - Verify the full local stack with Docker and Browser: `report -> create -> search -> detail -> scan -> match`.
 - Confirm the `timm` model downloads and serves correctly in the AI container, then compare a couple of real match results against the fallback path.

@@ -25,6 +25,66 @@ type EmbeddingResult = {
   warning: string | null;
 };
 
+type PetResponse = {
+  id: number;
+  name: string;
+  type: string;
+  email: string;
+  phone: string | null;
+  description: string | null;
+  city: string | null;
+  rawLocation: string | null;
+  latitude: number;
+  longitude: number;
+  imageUrls: string[];
+  embeddingInfo: {
+    model: string;
+    fallbackUsed: boolean;
+    warning: string | null;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type NormalizablePet = {
+  id: number;
+  name: string;
+  type: LostPetEntity['type'];
+  email: string;
+  phone?: string | null;
+  description?: string | null;
+  city?: string | null;
+  rawLocation?: string | null;
+  latitude: number;
+  longitude: number;
+  imageUrls?: string[] | null;
+  embedding?: string | null;
+  embeddingModel?: string | null;
+  embeddingFallbackUsed?: boolean | null;
+  embeddingWarning?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type MatchResponse = {
+  mode: 'mock' | 'real';
+  queryEmbedding: {
+    model: string;
+    fallbackUsed: boolean;
+    warning: string | null;
+  } | null;
+  matches: Array<{
+    id: number;
+    name: string;
+    type: string;
+    city: string | null;
+    imageUrl: string | null;
+    latitude: number;
+    longitude: number;
+    score: number;
+  }>;
+};
+
 @Injectable()
 export class LostPetsService {
   constructor(
@@ -33,7 +93,7 @@ export class LostPetsService {
     private readonly em: EntityManager,
   ) {}
 
-  private normalizePet(pet: LostPetEntity) {
+  private normalizePet(pet: NormalizablePet): PetResponse {
     return {
       id: pet.id,
       name: pet.name,
@@ -58,13 +118,25 @@ export class LostPetsService {
     };
   }
 
+  private buildMatchResponse(
+    mode: 'mock' | 'real',
+    matches: MatchResponse['matches'],
+    queryEmbedding: MatchResponse['queryEmbedding'] = null,
+  ): MatchResponse {
+    return {
+      mode,
+      queryEmbedding,
+      matches,
+    };
+  }
+
   private isMockMode() {
     return process.env.USE_MOCK_DATA !== 'false';
   }
 
 
-  private getMockPets() {
-    return [
+  private getMockPets(): PetResponse[] {
+    const mockPets: NormalizablePet[] = [
       {
         id: 9001,
         name: 'Mimi',
@@ -77,6 +149,10 @@ export class LostPetsService {
         latitude: 44.4479,
         longitude: 26.0979,
         imageUrls: [],
+        embedding: null,
+        embeddingModel: null,
+        embeddingFallbackUsed: null,
+        embeddingWarning: null,
         createdAt: new Date('2026-06-08T10:00:00.000Z'),
         updatedAt: new Date('2026-06-08T10:00:00.000Z'),
       },
@@ -92,6 +168,10 @@ export class LostPetsService {
         latitude: 46.7704,
         longitude: 23.5899,
         imageUrls: [],
+        embedding: null,
+        embeddingModel: null,
+        embeddingFallbackUsed: null,
+        embeddingWarning: null,
         createdAt: new Date('2026-06-07T14:30:00.000Z'),
         updatedAt: new Date('2026-06-07T14:30:00.000Z'),
       },
@@ -107,10 +187,16 @@ export class LostPetsService {
         latitude: 47.1739,
         longitude: 27.5748,
         imageUrls: [],
+        embedding: null,
+        embeddingModel: null,
+        embeddingFallbackUsed: null,
+        embeddingWarning: null,
         createdAt: new Date('2026-06-06T09:15:00.000Z'),
         updatedAt: new Date('2026-06-06T09:15:00.000Z'),
       },
     ];
+
+    return mockPets.map((pet) => this.normalizePet(pet));
   }
 
   private buildStoredImageUrls(photos: UploadedPhoto[]) {
@@ -191,11 +277,12 @@ export class LostPetsService {
     } satisfies EmbeddingResult;
   }
 
-  private getMockMatches(city?: string) {
+  private getMockMatches(city?: string): MatchResponse['matches'] {
     return this.getMockPets()
       .filter(
         (pet) =>
-          !city?.trim() || pet.city.toLowerCase() === city.trim().toLowerCase(),
+          !city?.trim() ||
+          pet.city?.toLowerCase() === city.trim().toLowerCase(),
       )
       .map((pet, index) => ({
         id: pet.id,
@@ -414,21 +501,14 @@ export class LostPetsService {
     }
 
     if (this.isMockMode()) {
-      return {
-        mode: 'mock',
-        matches: this.getMockMatches(city),
-      };
+      return this.buildMatchResponse('mock', this.getMockMatches(city));
     }
 
     const embeddingResult = await this.requestEmbedding(
       this.buildStoredImagePaths(photos),
     );
     if (!embeddingResult) {
-      return {
-        mode: 'real',
-        queryEmbedding: null,
-        matches: [],
-      };
+      return this.buildMatchResponse('real', []);
     }
 
     const vectorLiteral = this.buildVectorLiteral(embeddingResult.embedding);
@@ -470,14 +550,9 @@ export class LostPetsService {
       score: string | number;
     }>;
 
-    return {
-      mode: 'real',
-      queryEmbedding: {
-        model: embeddingResult.model,
-        fallbackUsed: embeddingResult.fallbackUsed,
-        warning: embeddingResult.warning,
-      },
-      matches: rows.map((row) => ({
+    return this.buildMatchResponse(
+      'real',
+      rows.map((row) => ({
         id: row.id,
         name: row.name,
         type: row.type,
@@ -487,6 +562,11 @@ export class LostPetsService {
         longitude: Number(row.longitude),
         score: Number(row.score),
       })),
-    };
+      {
+        model: embeddingResult.model,
+        fallbackUsed: embeddingResult.fallbackUsed,
+        warning: embeddingResult.warning,
+      },
+    );
   }
 }
