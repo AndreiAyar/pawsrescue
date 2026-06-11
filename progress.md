@@ -146,10 +146,30 @@ Latest update
 - Found one remaining operational mismatch:
   - the currently running local AI process appears older than the latest checked-in `apps/ai/main.py` health contract and likely needs a manual restart on the user's machine before we call the embedding slice fully current
 
+Latest update
+- Restarted the live local AI process and re-verified the real API -> AI path:
+  - `GET /health` on `:8000` now matches the latest checked-in `apps/ai/main.py` contract
+  - `POST /lost-pets/match` now reports the full ensemble model path in live responses:
+    - `ensemble:transformers:facebook/dinov3-vitl16-pretrain-lvd1689m+timm:vit_base_patch16_224_dino+vit_base_patch8_224_dino`
+  - `fallbackUsed` is `false` on the live verified path
+- Completed a real browser-driven scan verification through the in-app Browser:
+  - selected a real uploaded image on `/ro/scan`
+  - submitted the scan form successfully
+  - confirmed the page renders live match results and query embedding metadata
+  - confirmed the new distance wording is visible in the UI
+- Improved scan-result UX for demo clarity:
+  - match cards now show a friendly `NN% potrivire` / `NN% match` badge derived from vector distance
+  - raw vector distance is still shown beneath the badge for debugging/transparency
+- Fixed image rendering in the web UI by routing local upload paths through the existing Next dev proxy:
+  - scan result thumbnails now use `/api/uploads/...`
+  - pet detail hero images now use `/api/uploads/...`
+  - verified the proxied image URLs return `200 OK`
+  - verified the pet detail page has a live `<img>` after reload in the browser
+
 Next Up
-- Restart the already-running local AI process so the live service matches the latest checked-in `apps/ai/main.py`.
-- Run the same verified real-mode flow through the actual web UI with real clicks/uploads:
-  - `report -> search -> detail -> scan -> match`
+- Optionally do one final happy-path browser pass for `report -> search -> detail -> scan -> match` after the latest image fixes, mainly for demo confidence rather than implementation risk.
+- If we want one more post-MVP improvement, tune match quality/ranking:
+  - current live scan test returned multiple cat listings with the same displayed distance bucket, so ranking relevance can still be improved even though the wiring works
 - Decide whether the local default AI runtime should keep remote model downloads enabled or whether `AI_OFFLINE_MODEL_LOAD` should be enabled in any local env defaults.
 - Finish the last mock/real consistency pass for any remaining read endpoints.
 - Clean up existing unrelated TypeScript issues so builds/checks are easier to trust.

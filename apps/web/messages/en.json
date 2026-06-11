@@ -183,6 +183,7 @@
     "embeddingYes": "Yes",
     "embeddingNo": "No",
     "embeddingWarning": "Warning",
+    "matchPercent": "match",
     "matchDistance": "Distance",
     "matchDistanceHint": "Lower distance means a closer visual match."
   }

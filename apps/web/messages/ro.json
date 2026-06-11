@@ -183,6 +183,7 @@
     "embeddingYes": "Da",
     "embeddingNo": "Nu",
     "embeddingWarning": "Avertisment",
+    "matchPercent": "potrivire",
     "matchDistance": "Distanta",
     "matchDistanceHint": "O distanta mai mica inseamna o potrivire vizuala mai buna."
   }

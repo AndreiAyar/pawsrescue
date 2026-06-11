@@ -29,6 +29,7 @@ type ScanFormProps = {
     embeddingYes: string;
     embeddingNo: string;
     embeddingWarning: string;
+    matchPercent: string;
     matchDistance: string;
     matchDistanceHint: string;
   };
@@ -39,6 +40,27 @@ type QueryEmbeddingInfo = {
   fallbackUsed: boolean;
   warning: string | null;
 };
+
+function getMatchPercent(score: number) {
+  const normalized = 1 - Math.max(0, Math.min(score, 1));
+  return Math.round(normalized * 100);
+}
+
+function getResultImageUrl(imageUrl: string | null) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    return imageUrl;
+  }
+
+  if (imageUrl.startsWith("/")) {
+    return `/api${imageUrl}`;
+  }
+
+  return `/api/${imageUrl}`;
+}
 
 export default function ScanForm({ lang, labels }: ScanFormProps) {
   const [city, setCity] = useState("");
@@ -231,9 +253,9 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                   >
                     <div className="flex flex-col gap-4 sm:flex-row">
                       <div className="h-28 w-full overflow-hidden rounded-xl bg-slate-100 sm:w-36">
-                        {result.imageUrl ? (
+                        {getResultImageUrl(result.imageUrl) ? (
                           <img
-                            src={result.imageUrl}
+                            src={getResultImageUrl(result.imageUrl) ?? undefined}
                             alt={result.name}
                             className="h-full w-full object-cover"
                           />
@@ -252,9 +274,14 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                               {result.type} {result.city ? `· ${result.city}` : ""}
                             </p>
                           </div>
-                          <span className="rounded-full bg-[color:var(--butter)] px-3 py-1 text-xs font-semibold uppercase text-amber-800">
-                            {labels.matchDistance} {result.score.toFixed(3)}
-                          </span>
+                          <div className="text-right">
+                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-800">
+                              {getMatchPercent(result.score)}% {labels.matchPercent}
+                            </span>
+                            <p className="mt-2 text-xs font-semibold uppercase text-amber-800">
+                              {labels.matchDistance} {result.score.toFixed(3)}
+                            </p>
+                          </div>
                         </div>
 
                         <p className="mt-2 text-xs text-slate-500">

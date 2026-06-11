@@ -20,6 +20,22 @@ type PetDetail = {
   } | null;
 };
 
+function getPetImageUrl(imageUrl?: string | null) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    return imageUrl;
+  }
+
+  if (imageUrl.startsWith("/")) {
+    return `/api${imageUrl}`;
+  }
+
+  return `/api/${imageUrl}`;
+}
+
 export default async function PetDetailPage({
   params,
 }: {
@@ -72,9 +88,9 @@ export default async function PetDetailPage({
               {pet.type} {pet.city ? `· ${pet.city}` : ""}
             </p>
 
-            {pet.imageUrls[0] ? (
+            {getPetImageUrl(pet.imageUrls[0]) ? (
               <img
-                src={pet.imageUrls[0]}
+                src={getPetImageUrl(pet.imageUrls[0]) ?? undefined}
                 alt={pet.name}
                 className="mt-5 h-72 w-full rounded-2xl object-cover"
               />
