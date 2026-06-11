@@ -37,8 +37,13 @@ Done
 - Clarified AI service response contracts:
   - `/health` now exposes default model config and `timmAvailable`
   - `/embed` now always returns `model`, `fallbackUsed`, and `warning`
+- Added a simple local runtime helper:
+  - `npm run check:ai`
+  - optional usage: `node scripts/check-ai-runtime.mjs /absolute/path/to/image.jpg`
+  - this checks `/health` and can also verify `/embed` against a real shared file path
 - Verified Python syntax for `apps/ai/main.py`.
 - Verified `npm run --workspace api build` still passes after the embedding integration changes.
+- Verified the helper script syntax and confirmed it currently fails with `fetch failed` when the AI service is not running in this local session.
 
 In Progress
 - Consolidating read-side behavior so mock mode and real mode are consistent across list, detail, match, and clusters.
@@ -73,6 +78,7 @@ Important Files
 - `apps/api/src/migrations/Migration20260611101500.ts`
 - `apps/api/src/migrations/Migration20260611113000.ts`
 - `docker-compose.yml`
+- `scripts/check-ai-runtime.mjs`
 
 Notes
 - The user wants the MVP to stay very simple, easy to follow, and minimally invasive.
