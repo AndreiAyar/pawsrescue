@@ -190,12 +190,14 @@ def compute_image_embedding(
 
 
 @app.get("/health")
-def health() -> dict[str, str | int]:
+def health() -> dict[str, str | int | bool]:
     return {
         "status": "ok",
         "service": "ai",
         "defaultModel": DEFAULT_MODEL_NAME,
+        "defaultModelId": PAWSMATCH_MODEL_ID,
         "embeddingDimensions": TARGET_EMBEDDING_DIM,
+        "timmAvailable": bool(torch is not None and create_model is not None and transforms is not None),
     }
 
 
@@ -237,12 +239,13 @@ def embed(payload: EmbedRequest) -> dict[str, Any]:
     response: dict[str, Any] = {
         "model": resolved_model_name or "fallback-hybrid",
         "embeddingDimensions": TARGET_EMBEDDING_DIM,
+        "fallbackUsed": fallback_used,
         "embedding": aggregate.astype(float).tolist(),
     }
 
-    if fallback_used:
-        response["fallbackUsed"] = True
     if warning_messages:
         response["warning"] = warning_messages[0]
+    else:
+        response["warning"] = None
 
     return response
