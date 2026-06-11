@@ -61,6 +61,21 @@ class EmbedRequest(BaseModel):
     imagePaths: List[str]
 
 
+def resolve_image_path(image_path: str) -> Path:
+    candidate = Path(image_path)
+    if candidate.is_absolute():
+        return candidate
+
+    upload_dir = os.getenv("UPLOAD_DIR", "").strip()
+    if upload_dir:
+        upload_base = Path(upload_dir)
+        if not upload_base.is_absolute():
+            upload_base = (Path.cwd() / upload_base).resolve()
+        return upload_base / candidate.name
+
+    return (Path.cwd() / candidate).resolve()
+
+
 class TransformersImageEmbedder:
     def __init__(self, model_name: str):
         if AutoImageProcessor is None or AutoModel is None:
@@ -308,7 +323,7 @@ def embed(payload: EmbedRequest) -> dict[str, Any]:
     if not payload.imagePaths:
         raise HTTPException(status_code=400, detail="imagePaths is required")
 
-    existing_paths = [Path(image_path) for image_path in payload.imagePaths]
+    existing_paths = [resolve_image_path(image_path) for image_path in payload.imagePaths]
     missing_paths = [str(path) for path in existing_paths if not path.exists()]
 
     if missing_paths:
