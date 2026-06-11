@@ -131,7 +131,7 @@ export class LostPetsService {
   }
 
   private isMockMode() {
-    return process.env.USE_MOCK_DATA !== 'false';
+    return process.env.USE_MOCK_DATA === 'true';
   }
 
 

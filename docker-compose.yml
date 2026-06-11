@@ -36,7 +36,7 @@ services:
       DB_PASSWORD_NEST: ${POSTGRES_PASSWORD:-postgres}
       DB_NAME_NEST: ${POSTGRES_DB:-pawsrescue}
       AI_SERVICE_URL: http://ai:8000
-      USE_MOCK_DATA: ${USE_MOCK_DATA:-true}
+      USE_MOCK_DATA: ${USE_MOCK_DATA:-false}
       UPLOAD_DIR: /shared-uploads
     ports:
       - "${API_PORT:-3015}:3015"
