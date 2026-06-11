@@ -25,6 +25,14 @@ type EmbeddingResult = {
   warning: string | null;
 };
 
+type AiEmbeddingResponse = {
+  detail?: string;
+  model?: string;
+  embedding?: number[];
+  fallbackUsed?: boolean;
+  warning?: string;
+};
+
 type PetResponse = {
   id: number;
   name: string;
@@ -243,38 +251,60 @@ export class LostPetsService {
       throw new InternalServerErrorException('AI_SERVICE_URL is not configured');
     }
 
-    const response = await fetch(`${aiServiceUrl.replace(/\/$/, '')}/embed`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ imagePaths }),
-    });
+    try {
+      const response = await fetch(`${aiServiceUrl.replace(/\/$/, '')}/embed`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imagePaths }),
+      });
 
-    const data = (await response.json()) as {
-      detail?: string;
-      model?: string;
-      embedding?: number[];
-      fallbackUsed?: boolean;
-      warning?: string;
-    };
+      const rawBody = await response.text();
+      let data: AiEmbeddingResponse | null = null;
 
-    if (!response.ok || !Array.isArray(data.embedding)) {
+      if (rawBody) {
+        try {
+          data = JSON.parse(rawBody) as AiEmbeddingResponse;
+        } catch {
+          if (!response.ok) {
+            throw new InternalServerErrorException(
+              `AI service returned ${response.status} ${response.statusText}`,
+            );
+          }
+          throw new InternalServerErrorException(
+            'AI service returned an invalid JSON response',
+          );
+        }
+      }
+
+      if (!response.ok || !Array.isArray(data?.embedding)) {
+        throw new InternalServerErrorException(
+          data?.detail || 'AI service failed to generate an embedding',
+        );
+      }
+
+      if (data.embedding.length !== VECTOR_DIMENSIONS) {
+        throw new InternalServerErrorException('AI embedding dimensions are invalid');
+      }
+
+      return {
+        embedding: data.embedding.map((value) => Number(value)),
+        model: data.model?.trim() || 'unknown',
+        fallbackUsed: data.fallbackUsed === true,
+        warning: data.warning?.trim() || null,
+      } satisfies EmbeddingResult;
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+
       throw new InternalServerErrorException(
-        data.detail || 'AI service failed to generate an embedding',
+        `AI embedding request failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
-
-    if (data.embedding.length !== VECTOR_DIMENSIONS) {
-      throw new InternalServerErrorException('AI embedding dimensions are invalid');
-    }
-
-    return {
-      embedding: data.embedding.map((value) => Number(value)),
-      model: data.model?.trim() || 'unknown',
-      fallbackUsed: data.fallbackUsed === true,
-      warning: data.warning?.trim() || null,
-    } satisfies EmbeddingResult;
   }
 
   private getMockMatches(city?: string): MatchResponse['matches'] {
@@ -522,24 +552,7 @@ export class LostPetsService {
 
     params.push(vectorLiteral);
 
-    const rows = (await this.em.getConnection().execute(
-      `
-        select
-          "id",
-          "name",
-          "type",
-          "city",
-          "image_urls" as "imageUrls",
-          "latitude",
-          "longitude",
-          "embedding" <-> ?::vector as "score"
-        from "lost_pets"
-        ${whereClause}
-        order by "embedding" <-> ?::vector asc
-        limit 10
-      `,
-      params,
-    )) as Array<{
+    let rows: Array<{
       id: number;
       name: string;
       type: string;
@@ -549,6 +562,33 @@ export class LostPetsService {
       longitude: string | number;
       score: string | number;
     }>;
+
+    try {
+      rows = (await this.em.getConnection().execute(
+        `
+          select
+            "id",
+            "name",
+            "type",
+            "city",
+            "image_urls" as "imageUrls",
+            "latitude",
+            "longitude",
+            "embedding" <-> ?::vector as "score"
+          from "lost_pets"
+          ${whereClause}
+          order by "embedding" <-> ?::vector asc
+          limit 10
+        `,
+        params,
+      )) as typeof rows;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Match query failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
 
     return this.buildMatchResponse(
       'real',

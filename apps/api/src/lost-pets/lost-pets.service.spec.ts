@@ -130,6 +130,13 @@ describe('LostPetsService', () => {
 
     const fetchMock = jest.spyOn(global, 'fetch' as never).mockResolvedValue({
       ok: true,
+      text: async () =>
+        JSON.stringify({
+          model: 'fallback-hybrid',
+          fallbackUsed: true,
+          warning: 'model download unavailable',
+          embedding: Array.from({ length: 768 }, (_, index) => index / 1000),
+        }),
       json: async () => ({
         model: 'fallback-hybrid',
         fallbackUsed: true,
