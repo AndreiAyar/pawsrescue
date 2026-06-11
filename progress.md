@@ -24,6 +24,19 @@ Done
   - primary path adapted from `[/Users/ayar/Personal Dev/pawsmatch/compare.py](/Users/ayar/Personal%20Dev/pawsmatch/compare.py)` using a `timm` DINO image model
   - deterministic local fallback embedder kept in place so the service still works when the model is unavailable
 - Expanded pgvector storage from `vector(3)` to `vector(768)` with a follow-up migration that clears old incompatible MVP embeddings before resizing the column.
+- Added persistent embedding tracking fields on lost pets:
+  - `embedding_model`
+  - `embedding_fallback_used`
+  - `embedding_warning`
+- Propagated embedding tracking through API responses:
+  - listing detail now exposes `embeddingInfo`
+  - match results now expose `queryEmbedding`
+- Added a small UI status panel for embedding metadata in:
+  - `scan`
+  - `pet details`
+- Clarified AI service response contracts:
+  - `/health` now exposes default model config and `timmAvailable`
+  - `/embed` now always returns `model`, `fallbackUsed`, and `warning`
 - Verified Python syntax for `apps/ai/main.py`.
 - Verified `npm run --workspace api build` still passes after the embedding integration changes.
 
@@ -58,6 +71,7 @@ Important Files
 - `apps/ai/main.py`
 - `apps/ai/requirements.txt`
 - `apps/api/src/migrations/Migration20260611101500.ts`
+- `apps/api/src/migrations/Migration20260611113000.ts`
 - `docker-compose.yml`
 
 Notes

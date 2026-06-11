@@ -39,6 +39,7 @@ Status: Partially done
 - `GET /lost-pets/:id`
 - `pet details` page connected
 - `search` list section connected
+- embedding metadata is now surfaced in pet details
 - still needs end-to-end runtime verification in Docker/Browser
 
 ### Slice 3: Mock toggle for demo
@@ -62,6 +63,7 @@ Status: Partially done
 - embedding save path exists
 - `POST /lost-pets/match` exists
 - embedding dimension upgraded to fit the richer AI embeddings
+- query-time embedding metadata is now surfaced in the scan UI
 - still needs runtime verification and quality tuning of embeddings
 
 ### Slice 6: Final polish
@@ -82,4 +84,5 @@ Status: Not started
 - Review current modified files with `git status`.
 - Verify the current stack locally with Docker if available.
 - Confirm the `pawsmatch`-derived `timm` embedder actually boots and serves in `apps/ai`.
+- Use `GET /health` plus one real `/embed` or `/lost-pets/match` call to confirm whether the main model or fallback path is being used.
 - Only after AI quality is acceptable, do the Browser walkthrough and tighten the remaining flow gaps.
