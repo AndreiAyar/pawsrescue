@@ -29,6 +29,8 @@ type ScanFormProps = {
     embeddingYes: string;
     embeddingNo: string;
     embeddingWarning: string;
+    matchDistance: string;
+    matchDistanceHint: string;
   };
 };
 
@@ -251,9 +253,13 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                             </p>
                           </div>
                           <span className="rounded-full bg-[color:var(--butter)] px-3 py-1 text-xs font-semibold uppercase text-amber-800">
-                            score {result.score.toFixed(3)}
+                            {labels.matchDistance} {result.score.toFixed(3)}
                           </span>
                         </div>
+
+                        <p className="mt-2 text-xs text-slate-500">
+                          {labels.matchDistanceHint}
+                        </p>
 
                         <Link
                           href={`/${lang}/pets/${result.id}`}

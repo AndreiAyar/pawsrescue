@@ -123,11 +123,32 @@ Latest update
   - verified `GET /health` for both services
   - verified `GET /lost-pets` now normalizes legacy database rows
   - verified real `POST /lost-pets/match` returns a real embedding path and a successful match
-  - verified real `POST /lost-pets` returns `embeddingInfo` in the create response
-  - verified later `GET /lost-pets/:id` returns the same embedding metadata
+- verified real `POST /lost-pets` returns `embeddingInfo` in the create response
+- verified later `GET /lost-pets/:id` returns the same embedding metadata
+
+Latest update
+- Re-verified the currently running local stack on the user's machine instead of starting duplicate services:
+  - confirmed listeners already existed for `ai` on `127.0.0.1:8000`
+  - confirmed listeners already existed for `api` on `3015`
+  - confirmed the web app was already serving on `3000`
+- Re-verified live local endpoints:
+  - `GET /health` for `ai`
+  - `GET /health` for `api`
+  - `GET /lost-pets` returns real records with embedding metadata
+  - `POST /lost-pets/match` returns real matches against an existing uploaded image file
+- Re-verified the main web routes respond locally:
+  - `/ro/report`
+  - `/ro/search`
+  - `/ro/scan`
+- Tightened scan UI copy for the MVP:
+  - match results now label pgvector output as `distance` instead of a generic `score`
+  - added a short hint that lower distance means a closer visual match
+- Found one remaining operational mismatch:
+  - the currently running local AI process appears older than the latest checked-in `apps/ai/main.py` health contract and likely needs a manual restart on the user's machine before we call the embedding slice fully current
 
 Next Up
-- Run the same verified real-mode flow through the actual web UI:
+- Restart the already-running local AI process so the live service matches the latest checked-in `apps/ai/main.py`.
+- Run the same verified real-mode flow through the actual web UI with real clicks/uploads:
   - `report -> search -> detail -> scan -> match`
 - Decide whether the local default AI runtime should keep remote model downloads enabled or whether `AI_OFFLINE_MODEL_LOAD` should be enabled in any local env defaults.
 - Finish the last mock/real consistency pass for any remaining read endpoints.

@@ -33,6 +33,8 @@ export default async function ScanPage({
         embeddingYes: t("embeddingYes"),
         embeddingNo: t("embeddingNo"),
         embeddingWarning: t("embeddingWarning"),
+        matchDistance: t("matchDistance"),
+        matchDistanceHint: t("matchDistanceHint"),
       }}
     />
   );
