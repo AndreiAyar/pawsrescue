@@ -107,10 +107,29 @@ Latest update
   - fixed relative upload paths so AI can find locally uploaded matcher images
   - installed `transformers` so the primary AI path no longer warns that the dependency is missing
 
+Latest update
+- Kept the new embedding work surgical in `apps/ai/main.py`:
+  - `auto` now combines the `transformers` DINOv3 path with the pawsmatch-inspired `timm` path when both succeed
+  - added `AI_OFFLINE_MODEL_LOAD=true|false` so offline/local verification can fail fast instead of hanging on model-download retries
+  - when offline mode is enabled, the service now skips the `timm` branch cleanly and reports the actual model path used
+- Fixed real API response consistency in `apps/api/src/lost-pets/lost-pets.service.ts`:
+  - legacy nullable rows are normalized to safe defaults (`type: "other"`, `email: ""`, `updatedAt: createdAt`)
+  - `POST /lost-pets` now returns `embeddingInfo` immediately after a successful embed instead of only showing it on later reads
+- Expanded focused verification:
+  - `npm run --workspace ai check`
+  - `npm run --workspace api build`
+  - `npm run --workspace api test -- lost-pets.service.spec.ts --runInBand`
+  - verified temporary real-mode stack on `127.0.0.1:8010` and `127.0.0.1:3016`
+  - verified `GET /health` for both services
+  - verified `GET /lost-pets` now normalizes legacy database rows
+  - verified real `POST /lost-pets/match` returns a real embedding path and a successful match
+  - verified real `POST /lost-pets` returns `embeddingInfo` in the create response
+  - verified later `GET /lost-pets/:id` returns the same embedding metadata
+
 Next Up
-- Restart `apps/ai` and `apps/api`, then retry a real `scan -> match` request locally.
-- Confirm whether the AI response now uses the intended primary path without the old `transformers dependencies are not installed` warning.
-- Verify the full local flow in real mode: `report -> create -> search -> detail -> scan -> match`.
+- Run the same verified real-mode flow through the actual web UI:
+  - `report -> search -> detail -> scan -> match`
+- Decide whether the local default AI runtime should keep remote model downloads enabled or whether `AI_OFFLINE_MODEL_LOAD` should be enabled in any local env defaults.
 - Finish the last mock/real consistency pass for any remaining read endpoints.
 - Clean up existing unrelated TypeScript issues so builds/checks are easier to trust.
 
@@ -121,7 +140,7 @@ Known Issues
   - `apps/web/app/components/Map/clusterCache.ts`
 - Existing unrelated API Jest failure:
   - `apps/api/src/app.controller.spec.ts` still expects `"Hello World!"` while the app returns `"PawsRescue API"`
-- Full browser-style verification still depends on the user's live local processes rather than this sandbox.
+- Full browser-style verification of the Next.js UI still depends on a reachable `web` process; this turn verified the real API/AI flow directly over HTTP instead.
 
 Important Files
 - `apps/api/src/lost-pets/lost-pets.controller.ts`

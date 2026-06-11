@@ -26,6 +26,7 @@ except Exception:  # pragma: no cover - optional runtime dependency
 
 TARGET_EMBEDDING_DIM = int(os.getenv("AI_TARGET_EMBEDDING_DIM", "768"))
 DEFAULT_MODEL_NAME = os.getenv("AI_MODEL_NAME", "auto").strip() or "auto"
+OFFLINE_MODEL_LOAD = os.getenv("AI_OFFLINE_MODEL_LOAD", "false").strip().lower() == "true"
 TRANSFORMERS_MODEL_NAME = os.getenv(
     "AI_TRANSFORMERS_MODEL_NAME",
     "facebook/dinov3-vitl16-pretrain-lvd1689m",
@@ -47,14 +48,18 @@ GRAY_RESIZE = (12, 12)
 HISTOGRAM_BINS = 8
 GRAYSCALE_HISTOGRAM_BINS = 16
 
-PRIMARY_MODEL_ALIASES = {"auto", "best", "transformers", "dinov3", "pawsmatch"}
+COMBINED_MODEL_ALIASES = {"auto", "best", "pawsmatch"}
+TRANSFORMERS_MODEL_ALIASES = {"transformers", "dinov3"}
 TIMM_MODEL_ALIASES = {
     "timm",
     "dino",
     "pawsmatch-dino",
 }
 
-app = FastAPI(title="PawsRescue AI Service", version="0.3.0")
+app = FastAPI(title="PawsRescue AI Service", version="0.4.0")
+
+if OFFLINE_MODEL_LOAD:
+    os.environ["HF_HUB_OFFLINE"] = "1"
 
 
 class EmbedRequest(BaseModel):
@@ -82,8 +87,14 @@ class TransformersImageEmbedder:
             raise RuntimeError("transformers dependencies are not installed")
 
         self.model_name = model_name
-        self.processor = AutoImageProcessor.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name)
+        self.processor = AutoImageProcessor.from_pretrained(
+            model_name,
+            local_files_only=OFFLINE_MODEL_LOAD,
+        )
+        self.model = AutoModel.from_pretrained(
+            model_name,
+            local_files_only=OFFLINE_MODEL_LOAD,
+        )
         self.model = self.model.to("cpu")
         self.model.eval()
 
@@ -114,6 +125,8 @@ class TimmImageEmbedder:
     def __init__(self, model_id: str):
         if torch is None or create_model is None or transforms is None:
             raise RuntimeError("timm dependencies are not installed")
+        if OFFLINE_MODEL_LOAD:
+            raise RuntimeError("timm offline model loading is disabled")
 
         self.model_id = model_id
         self.transform = transforms.Compose(
@@ -185,6 +198,18 @@ def compute_timm_ensemble_embedding(
         return None, warnings
 
     return normalize_embedding(np.mean(np.stack(embeddings, axis=0), axis=0)), warnings
+
+
+def compute_transformers_embedding(
+    image: Image.Image,
+    model_name: str,
+) -> tuple[np.ndarray | None, str | None]:
+    try:
+        embedding = get_transformers_embedder(model_name).embed(image)
+    except Exception as error:
+        return None, f"transformers model failed: {error}"
+
+    return normalize_embedding(embedding), None
 
 
 def normalize_embedding(values: np.ndarray) -> np.ndarray:
@@ -267,28 +292,70 @@ def compute_image_embedding(
     requested_model: str,
 ) -> tuple[np.ndarray, str, bool, str | None]:
     normalized_model = requested_model.strip().lower() or "auto"
-    attempt_errors: list[str] = []
+    attempt_messages: list[str] = []
 
-    if normalized_model in PRIMARY_MODEL_ALIASES:
-        try:
-            raw_embedding = get_transformers_embedder(TRANSFORMERS_MODEL_NAME).embed(image)
+    if normalized_model in COMBINED_MODEL_ALIASES:
+        embeddings: list[np.ndarray] = []
+        used_transformers = False
+        used_timm = False
+
+        transformers_embedding, transformers_warning = compute_transformers_embedding(
+            image,
+            TRANSFORMERS_MODEL_NAME,
+        )
+        if transformers_embedding is not None:
+            embeddings.append(transformers_embedding)
+            used_transformers = True
+        if transformers_warning:
+            attempt_messages.append(transformers_warning)
+
+        timm_embedding, timm_warnings = compute_timm_ensemble_embedding(
+            image,
+            TIMM_MODEL_NAMES,
+        )
+        if timm_embedding is not None:
+            embeddings.append(timm_embedding)
+            used_timm = True
+        attempt_messages.extend(timm_warnings)
+
+        if embeddings:
+            warning = "; ".join(attempt_messages) if attempt_messages else None
+            if used_transformers and used_timm:
+                resolved_model_name = (
+                    f"ensemble:transformers:{TRANSFORMERS_MODEL_NAME}"
+                    f"+timm:{'+'.join(TIMM_MODEL_NAMES)}"
+                )
+            elif used_transformers:
+                resolved_model_name = f"transformers:{TRANSFORMERS_MODEL_NAME}"
+            else:
+                resolved_model_name = f"timm:{'+'.join(TIMM_MODEL_NAMES)}"
             return (
-                normalize_embedding(raw_embedding),
+                normalize_embedding(np.mean(np.stack(embeddings, axis=0), axis=0)),
+                resolved_model_name,
+                False,
+                warning,
+            )
+
+    if normalized_model in TRANSFORMERS_MODEL_ALIASES:
+        embedding, warning = compute_transformers_embedding(
+            image,
+            TRANSFORMERS_MODEL_NAME,
+        )
+        if embedding is not None:
+            return (
+                embedding,
                 f"transformers:{TRANSFORMERS_MODEL_NAME}",
                 False,
                 None,
             )
-        except Exception as error:
-            attempt_errors.append(f"transformers model failed: {error}")
+        if warning:
+            attempt_messages.append(warning)
 
-    if normalized_model in PRIMARY_MODEL_ALIASES | TIMM_MODEL_ALIASES or attempt_errors:
-        raw_embedding, timm_warnings = compute_timm_ensemble_embedding(
-            image,
-            TIMM_MODEL_NAMES,
-        )
-        attempt_errors.extend(timm_warnings)
+    if normalized_model in TIMM_MODEL_ALIASES or attempt_messages:
+        raw_embedding, timm_warnings = compute_timm_ensemble_embedding(image, TIMM_MODEL_NAMES)
+        attempt_messages.extend(timm_warnings)
         if raw_embedding is not None:
-            warning = attempt_errors[0] if attempt_errors else None
+            warning = "; ".join(attempt_messages) if attempt_messages else None
             return (
                 raw_embedding,
                 f"timm:{'+'.join(TIMM_MODEL_NAMES)}",
@@ -297,7 +364,7 @@ def compute_image_embedding(
             )
 
     fallback_embedding = compute_fallback_embedding(image)
-    warning = "; ".join(attempt_errors) if attempt_errors else None
+    warning = "; ".join(attempt_messages) if attempt_messages else None
     return fallback_embedding, "fallback-hybrid", True, warning
 
 
@@ -307,6 +374,9 @@ def health() -> dict[str, Any]:
         "status": "ok",
         "service": "ai",
         "defaultModel": DEFAULT_MODEL_NAME,
+        "offlineModelLoad": OFFLINE_MODEL_LOAD,
+        "combinedModelAliases": sorted(COMBINED_MODEL_ALIASES),
+        "transformersModelName": TRANSFORMERS_MODEL_NAME,
         "timmModelIds": TIMM_MODEL_NAMES,
         "embeddingDimensions": TARGET_EMBEDDING_DIM,
         "transformersAvailable": bool(

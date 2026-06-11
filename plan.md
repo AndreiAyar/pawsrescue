@@ -35,14 +35,15 @@ Status: Done
 - listing persistence
 
 ### Slice 2: Real read flow
-Status: Partially done
+Status: Mostly done
 - `GET /lost-pets`
 - `GET /lost-pets/:id`
 - `pet details` page connected
 - `search` list section connected
 - embedding metadata is now surfaced in pet details
 - local real-mode env has been wired for `api` and `web`
-- still needs end-to-end runtime verification against the live local processes
+- direct real-mode API verification now passes
+- still needs one browser/UI pass against the live local `web` process
 
 ### Slice 3: Mock toggle for demo
 Status: Partially done
@@ -61,17 +62,19 @@ Status: Mostly done
 - `apps/ai` is now exposed as a Turborepo workspace task for local dev ergonomics
 - the AI service now uses a pawsmatch-inspired `timm` ensemble (`vit_base_patch16_224_dino` plus `vit_base_patch8_224_dino`) with a deterministic fallback
 - `transformers` is now installed locally in `apps/ai/.venv`
-- still needs one live post-restart verification against the actual local stack
+- added `AI_OFFLINE_MODEL_LOAD=true|false` for fast offline verification
+- direct live verification now passes against a temporary local stack
 
 ### Slice 5: Vector search
-Status: Partially done
+Status: Mostly done
 - pgvector migration exists
 - embedding save path exists
 - `POST /lost-pets/match` exists
 - embedding dimension upgraded to fit the richer AI embeddings
 - query-time embedding metadata is now surfaced in the scan UI
 - Supabase schema migrations for embedding columns have now been applied
-- still needs runtime verification and quality tuning of embeddings
+- direct runtime verification now passes
+- still needs quality tuning and browser/UI walkthrough
 
 ### Slice 6: Final polish
 Status: Not started
@@ -88,8 +91,7 @@ Status: Not started
 
 ## Immediate Next Steps
 - Continue from the current branch: `dev`.
-- Review current modified files with `git status`.
-- Restart `apps/ai` and `apps/api` locally so the latest env and dependency fixes are active.
-- Retry one real `POST /lost-pets/match` flow and confirm the returned embedding metadata after the `transformers` install.
-- Verify the real local flow: `report -> search -> detail -> scan -> match`.
-- Only after local real-mode behavior is stable, do the Browser walkthrough and tighten the remaining flow gaps.
+- Verify the actual web UI against the real API flow:
+  - `report -> search -> detail -> scan -> match`
+- Decide whether `AI_OFFLINE_MODEL_LOAD` should remain opt-in only or be set in any local env for offline development.
+- Finish the last mock/real consistency pass after the UI walkthrough.

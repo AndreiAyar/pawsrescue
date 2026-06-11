@@ -56,9 +56,9 @@ type PetResponse = {
 
 type NormalizablePet = {
   id: number;
-  name: string;
-  type: LostPetEntity['type'];
-  email: string;
+  name: string | null;
+  type: LostPetEntity['type'] | null;
+  email: string | null;
   phone?: string | null;
   description?: string | null;
   city?: string | null;
@@ -71,7 +71,7 @@ type NormalizablePet = {
   embeddingFallbackUsed?: boolean | null;
   embeddingWarning?: string | null;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt: Date | null;
 };
 
 type MatchResponse = {
@@ -104,9 +104,9 @@ export class LostPetsService {
   private normalizePet(pet: NormalizablePet): PetResponse {
     return {
       id: pet.id,
-      name: pet.name,
-      type: pet.type,
-      email: pet.email,
+      name: pet.name ?? 'Unknown pet',
+      type: pet.type ?? 'other',
+      email: pet.email ?? '',
       phone: pet.phone ?? null,
       description: pet.description ?? null,
       city: pet.city ?? null,
@@ -122,7 +122,7 @@ export class LostPetsService {
           }
         : null,
       createdAt: pet.createdAt,
-      updatedAt: pet.updatedAt,
+      updatedAt: pet.updatedAt ?? pet.createdAt,
     };
   }
 
@@ -371,6 +371,7 @@ export class LostPetsService {
       );
       if (embeddingResult) {
         await this.saveEmbeddingForPet(createdPet.id, embeddingResult);
+        createdPet.embedding = this.buildVectorLiteral(embeddingResult.embedding);
         createdPet.embeddingModel = embeddingResult.model;
         createdPet.embeddingFallbackUsed = embeddingResult.fallbackUsed;
         createdPet.embeddingWarning = embeddingResult.warning ?? undefined;

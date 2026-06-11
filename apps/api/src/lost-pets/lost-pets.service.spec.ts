@@ -125,6 +125,69 @@ describe('LostPetsService', () => {
     });
   });
 
+  it('fills safe defaults for legacy real records with nullable fields', async () => {
+    process.env.USE_MOCK_DATA = 'false';
+    repository.findAll.mockResolvedValue([
+      {
+        ...buildEntity(),
+        name: null,
+        type: null,
+        email: null,
+        updatedAt: null,
+      },
+    ]);
+
+    const pets = await service.findAll();
+
+    expect(pets[0]).toMatchObject({
+      name: 'Unknown pet',
+      type: 'other',
+      email: '',
+    });
+    expect(pets[0].updatedAt).toEqual(pets[0].createdAt);
+  });
+
+  it('returns embedding metadata immediately after a real create with photos', async () => {
+    process.env.USE_MOCK_DATA = 'false';
+
+    const createdEntity = buildEntity();
+    createdEntity.id = 21;
+    createdEntity.embedding = undefined;
+    createdEntity.embeddingModel = undefined;
+    createdEntity.embeddingFallbackUsed = undefined;
+    createdEntity.embeddingWarning = undefined;
+    repository.create.mockReturnValue(createdEntity);
+
+    const fetchMock = jest.spyOn(global, 'fetch' as never).mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          model: 'transformers:facebook/dinov3-vitl16-pretrain-lvd1689m',
+          fallbackUsed: false,
+          warning: null,
+          embedding: Array.from({ length: 768 }, (_, index) => index / 1000),
+        }),
+    } as Response);
+
+    const result = await service.create(
+      {
+        name: 'Luna',
+        type: 'dog',
+        email: 'owner@example.com',
+        latitude: 44.43,
+        longitude: 26.1,
+      },
+      [buildPhoto('/shared-uploads/luna.jpg')],
+    );
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(result.embeddingInfo).toMatchObject({
+      model: 'transformers:facebook/dinov3-vitl16-pretrain-lvd1689m',
+      fallbackUsed: false,
+      warning: null,
+    });
+  });
+
   it('returns normalized real match results with query embedding metadata', async () => {
     process.env.USE_MOCK_DATA = 'false';
 
