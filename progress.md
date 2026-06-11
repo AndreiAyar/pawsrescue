@@ -20,15 +20,21 @@ Done
 - Added mock-mode support for clusters and matches.
 - Added mock list/detail support so demo mode can navigate `search -> detail` and `scan -> detail`.
 - Upgraded AI embedding from pure stub metadata to a simple RGB-based image embedding using Pillow + NumPy.
+- Replaced the simple RGB embedder with a richer AI embedding flow in `apps/ai`:
+  - primary path adapted from `[/Users/ayar/Personal Dev/pawsmatch/compare.py](/Users/ayar/Personal%20Dev/pawsmatch/compare.py)` using a `timm` DINO image model
+  - deterministic local fallback embedder kept in place so the service still works when the model is unavailable
+- Expanded pgvector storage from `vector(3)` to `vector(768)` with a follow-up migration that clears old incompatible MVP embeddings before resizing the column.
+- Verified Python syntax for `apps/ai/main.py`.
+- Verified `npm run --workspace api build` still passes after the embedding integration changes.
 
 In Progress
 - Consolidating read-side behavior so mock mode and real mode are consistent across list, detail, match, and clusters.
-- Preparing to replace or extend the simple RGB embedder with useful logic adapted from `[/Users/ayar/Personal Dev/pawsmatch/](/Users/ayar/Personal%20Dev/pawsmatch/)`.
+- Full local runtime verification of the upgraded AI path still needs Docker or an equivalent local service run.
 
 Next Up
-- Pull the useful embedding logic from `pawsmatch` into `apps/ai` without overcomplicating the service.
-- Decide whether to keep the RGB embedder as fallback and add a heavier model behind a flag.
 - Verify the full local stack with Docker and Browser: `report -> create -> search -> detail -> scan -> match`.
+- Confirm the `timm` model downloads and serves correctly in the AI container, then compare a couple of real match results against the fallback path.
+- Finish the mock/real consistency pass for read endpoints.
 - Clean up existing unrelated TypeScript issues so builds/checks are easier to trust.
 
 Known Issues
@@ -36,6 +42,8 @@ Known Issues
   - `apps/api/test/app.e2e-spec.ts`
 - Existing unrelated web TypeScript errors:
   - `apps/web/app/components/Map/clusterCache.ts`
+- Existing unrelated API Jest failure:
+  - `apps/api/src/app.controller.spec.ts` still expects `"Hello World!"` while the app returns `"PawsRescue API"`
 - Docker/Browser verification could not be completed inside this local session because `docker` was not available in PATH here.
 
 Important Files
@@ -49,6 +57,7 @@ Important Files
 - `apps/web/app/[lang]/pets/[id]/page.tsx`
 - `apps/ai/main.py`
 - `apps/ai/requirements.txt`
+- `apps/api/src/migrations/Migration20260611101500.ts`
 - `docker-compose.yml`
 
 Notes

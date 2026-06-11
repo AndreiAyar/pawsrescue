@@ -16,7 +16,7 @@ import { basename } from 'path';
 import { UPLOADS_ROUTE_PREFIX } from '../uploads/upload-config';
 import { UploadedPhoto } from '../uploads/uploaded-photo.type';
 
-const VECTOR_DIMENSIONS = 3;
+const VECTOR_DIMENSIONS = 768;
 
 @Injectable()
 export class LostPetsService {

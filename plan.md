@@ -49,17 +49,19 @@ Status: Partially done
 - still needs one final consistency pass across all read endpoints
 
 ### Slice 4: AI microservice
-Status: Partially done
+Status: Mostly done
 - `/embed` exists
 - local image-path contract exists
-- current embedder is simple RGB-based image embedding
-- next step is to adapt useful logic from `pawsmatch`
+- primary embedder now adapts the DINO/timm path from `pawsmatch`
+- fallback embedder remains available so the service still works without model runtime success
+- still needs runtime verification with the actual local stack
 
 ### Slice 5: Vector search
 Status: Partially done
 - pgvector migration exists
 - embedding save path exists
 - `POST /lost-pets/match` exists
+- embedding dimension upgraded to fit the richer AI embeddings
 - still needs runtime verification and quality tuning of embeddings
 
 ### Slice 6: Final polish
@@ -79,5 +81,5 @@ Status: Not started
 - Continue from the current branch: `dev`.
 - Review current modified files with `git status`.
 - Verify the current stack locally with Docker if available.
-- Continue integrating `pawsmatch` logic into `apps/ai`.
+- Confirm the `pawsmatch`-derived `timm` embedder actually boots and serves in `apps/ai`.
 - Only after AI quality is acceptable, do the Browser walkthrough and tighten the remaining flow gaps.
