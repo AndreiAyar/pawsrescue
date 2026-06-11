@@ -100,6 +100,15 @@ export class LostPetEntity {
   @Property({ type: 'text', nullable: true, columnType: 'vector(768)' })
   embedding?: string;
 
+  @Property({ nullable: true })
+  embeddingModel?: string;
+
+  @Property({ nullable: true })
+  embeddingFallbackUsed?: boolean;
+
+  @Property({ type: 'text', nullable: true })
+  embeddingWarning?: string;
+
   @Property({ onCreate: () => new Date() })
   createdAt!: Date;
 

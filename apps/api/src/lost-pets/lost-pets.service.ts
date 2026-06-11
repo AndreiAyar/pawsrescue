@@ -18,6 +18,13 @@ import { UploadedPhoto } from '../uploads/uploaded-photo.type';
 
 const VECTOR_DIMENSIONS = 768;
 
+type EmbeddingResult = {
+  embedding: number[];
+  model: string;
+  fallbackUsed: boolean;
+  warning: string | null;
+};
+
 @Injectable()
 export class LostPetsService {
   constructor(
@@ -39,6 +46,13 @@ export class LostPetsService {
       latitude: Number(pet.latitude),
       longitude: Number(pet.longitude),
       imageUrls: pet.imageUrls ?? [],
+      embeddingInfo: pet.embedding
+        ? {
+            model: pet.embeddingModel ?? 'unknown',
+            fallbackUsed: pet.embeddingFallbackUsed ?? false,
+            warning: pet.embeddingWarning ?? null,
+          }
+        : null,
       createdAt: pet.createdAt,
       updatedAt: pet.updatedAt,
     };
@@ -111,11 +125,25 @@ export class LostPetsService {
     return `[${embedding.map((value) => Number(value).toFixed(6)).join(',')}]`;
   }
 
-  private async saveEmbeddingForPet(id: number, embedding: number[]) {
-    const vectorLiteral = this.buildVectorLiteral(embedding);
+  private async saveEmbeddingForPet(id: number, embeddingResult: EmbeddingResult) {
+    const vectorLiteral = this.buildVectorLiteral(embeddingResult.embedding);
     await this.em.getConnection().execute(
-      'update "lost_pets" set "embedding" = ?::vector where "id" = ?',
-      [vectorLiteral, id],
+      `
+        update "lost_pets"
+        set
+          "embedding" = ?::vector,
+          "embedding_model" = ?,
+          "embedding_fallback_used" = ?,
+          "embedding_warning" = ?
+        where "id" = ?
+      `,
+      [
+        vectorLiteral,
+        embeddingResult.model,
+        embeddingResult.fallbackUsed,
+        embeddingResult.warning,
+        id,
+      ],
     );
   }
 
@@ -139,7 +167,10 @@ export class LostPetsService {
 
     const data = (await response.json()) as {
       detail?: string;
+      model?: string;
       embedding?: number[];
+      fallbackUsed?: boolean;
+      warning?: string;
     };
 
     if (!response.ok || !Array.isArray(data.embedding)) {
@@ -152,7 +183,12 @@ export class LostPetsService {
       throw new InternalServerErrorException('AI embedding dimensions are invalid');
     }
 
-    return data.embedding.map((value) => Number(value));
+    return {
+      embedding: data.embedding.map((value) => Number(value)),
+      model: data.model?.trim() || 'unknown',
+      fallbackUsed: data.fallbackUsed === true,
+      warning: data.warning?.trim() || null,
+    } satisfies EmbeddingResult;
   }
 
   private getMockMatches(city?: string) {
@@ -213,11 +249,14 @@ export class LostPetsService {
     await this.em.persistAndFlush(createdPet);
 
     if (photos.length > 0) {
-      const embedding = await this.requestEmbedding(
+      const embeddingResult = await this.requestEmbedding(
         this.buildStoredImagePaths(photos),
       );
-      if (embedding) {
-        await this.saveEmbeddingForPet(createdPet.id, embedding);
+      if (embeddingResult) {
+        await this.saveEmbeddingForPet(createdPet.id, embeddingResult);
+        createdPet.embeddingModel = embeddingResult.model;
+        createdPet.embeddingFallbackUsed = embeddingResult.fallbackUsed;
+        createdPet.embeddingWarning = embeddingResult.warning ?? undefined;
       }
     }
 
@@ -381,15 +420,18 @@ export class LostPetsService {
       };
     }
 
-    const embedding = await this.requestEmbedding(this.buildStoredImagePaths(photos));
-    if (!embedding) {
+    const embeddingResult = await this.requestEmbedding(
+      this.buildStoredImagePaths(photos),
+    );
+    if (!embeddingResult) {
       return {
         mode: 'real',
+        queryEmbedding: null,
         matches: [],
       };
     }
 
-    const vectorLiteral = this.buildVectorLiteral(embedding);
+    const vectorLiteral = this.buildVectorLiteral(embeddingResult.embedding);
     const params: (string | number)[] = [vectorLiteral];
     let whereClause = 'where "embedding" is not null';
 
@@ -430,6 +472,11 @@ export class LostPetsService {
 
     return {
       mode: 'real',
+      queryEmbedding: {
+        model: embeddingResult.model,
+        fallbackUsed: embeddingResult.fallbackUsed,
+        warning: embeddingResult.warning,
+      },
       matches: rows.map((row) => ({
         id: row.id,
         name: row.name,
