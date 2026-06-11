@@ -5,8 +5,10 @@ import { Button } from "@repo/ui/button";
 import MapClient from "./MapClient";
 
 type SearchMapPanelProps = {
+  lang: string;
   title: string;
   badge: string;
+  openListingLabel: string;
   locateLabel: string;
   locatingLabel: string;
   locationLabel: string;
@@ -16,8 +18,10 @@ type SearchMapPanelProps = {
 };
 
 export default function SearchMapPanel({
+  lang,
   title,
   badge,
+  openListingLabel,
   locateLabel,
   locatingLabel,
   locationLabel,
@@ -60,6 +64,8 @@ export default function SearchMapPanel({
       </div>
       <div className="px-1.5 py-3 sm:p-4">
         <MapClient
+          lang={lang}
+          openListingLabel={openListingLabel}
           mapHeightClassName="h-[420px] sm:h-[600px]"
           locationLabel={locationLabel}
           locationPlaceholder={locationPlaceholder}

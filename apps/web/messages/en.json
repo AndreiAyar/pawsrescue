@@ -61,6 +61,8 @@
   "Common": {
     "comingSoon": "Coming soon",
     "backHome": "Back home",
+    "apiUnavailable": "The service is not responding right now. Please try again in a few seconds.",
+    "listingNotFound": "Listing not found.",
     "embedding": {
       "title": "Embedding status",
       "model": "Model",
@@ -93,7 +95,8 @@
     },
     "map": {
       "title": "Map",
-      "badge": "Clusters"
+      "badge": "Clusters",
+      "openListing": "Open listing"
     },
     "location": {
       "label": "Location",
@@ -122,7 +125,8 @@
     "list": {
       "title": "Nearby reports",
       "badge": "Updated now",
-      "more": "Load more"
+      "more": "Load more",
+      "unavailable": "The listing feed could not be loaded right now."
     }
   },
   "Report": {
@@ -202,7 +206,7 @@
     "embeddingNo": "No",
     "embeddingWarning": "Warning",
     "matchPercent": "match",
-    "matchDistance": "Distance",
-    "matchDistanceHint": "Lower distance means a closer visual match."
+    "matchDistance": "Cosine distance",
+    "matchDistanceHint": "Similarity compares cat-focused DINOv3 features. It is a search score, not proof of identity."
   }
 }

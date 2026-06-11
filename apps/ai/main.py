@@ -10,12 +10,14 @@ from pydantic import BaseModel
 
 try:
     import torch
-    from timm import create_model
-    from torchvision import transforms
+    from torchvision.models.detection import (
+        FasterRCNN_ResNet50_FPN_V2_Weights,
+        fasterrcnn_resnet50_fpn_v2,
+    )
 except Exception:  # pragma: no cover - optional runtime dependency
     torch = None
-    create_model = None
-    transforms = None
+    FasterRCNN_ResNet50_FPN_V2_Weights = None
+    fasterrcnn_resnet50_fpn_v2 = None
 
 try:
     from transformers import AutoImageProcessor, AutoModel
@@ -24,37 +26,24 @@ except Exception:  # pragma: no cover - optional runtime dependency
     AutoModel = None
 
 
-TARGET_EMBEDDING_DIM = int(os.getenv("AI_TARGET_EMBEDDING_DIM", "768"))
+TARGET_EMBEDDING_DIM = int(os.getenv("AI_TARGET_EMBEDDING_DIM", "1024"))
 DEFAULT_MODEL_NAME = os.getenv("AI_MODEL_NAME", "auto").strip() or "auto"
 OFFLINE_MODEL_LOAD = os.getenv("AI_OFFLINE_MODEL_LOAD", "false").strip().lower() == "true"
 TRANSFORMERS_MODEL_NAME = os.getenv(
     "AI_TRANSFORMERS_MODEL_NAME",
     "facebook/dinov3-vitl16-pretrain-lvd1689m",
 ).strip()
-TIMM_MODEL_NAMES = [
-    name.strip()
-    for name in os.getenv(
-        "AI_TIMM_MODEL_NAMES",
-        os.getenv(
-            "AI_TIMM_MODEL_NAME",
-            "vit_base_patch16_224_dino,vit_base_patch8_224_dino",
-        ),
-    ).split(",")
-    if name.strip()
-]
+CAT_DETECTION_THRESHOLD = float(os.getenv("AI_CAT_DETECTION_THRESHOLD", "0.65"))
+CAT_CROP_PADDING = float(os.getenv("AI_CAT_CROP_PADDING", "0.08"))
+CAT_CROP_WEIGHT = float(os.getenv("AI_CAT_CROP_WEIGHT", "0.8"))
 
 RGB_RESIZE = (12, 12)
 GRAY_RESIZE = (12, 12)
 HISTOGRAM_BINS = 8
 GRAYSCALE_HISTOGRAM_BINS = 16
 
-COMBINED_MODEL_ALIASES = {"auto", "best", "pawsmatch"}
-TRANSFORMERS_MODEL_ALIASES = {"transformers", "dinov3"}
-TIMM_MODEL_ALIASES = {
-    "timm",
-    "dino",
-    "pawsmatch-dino",
-}
+DINOV3_MODEL_ALIASES = {"auto", "best", "pawsmatch", "transformers", "dinov3"}
+PIPELINE_MODEL_NAME = f"dinov3-cat-crop-v1:{TRANSFORMERS_MODEL_NAME}"
 
 app = FastAPI(title="PawsRescue AI Service", version="0.4.0")
 
@@ -121,83 +110,66 @@ class TransformersImageEmbedder:
         return np.asarray(outputs[0]).flatten()
 
 
-class TimmImageEmbedder:
-    def __init__(self, model_id: str):
-        if torch is None or create_model is None or transforms is None:
-            raise RuntimeError("timm dependencies are not installed")
-        if OFFLINE_MODEL_LOAD:
-            raise RuntimeError("timm offline model loading is disabled")
-
-        self.model_id = model_id
-        self.transform = transforms.Compose(
-            [
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225],
-                ),
-            ]
-        )
-        self.model = create_model(model_id, pretrained=True)
-        self.model = self.model.to("cpu")
-        self.model.eval()
-
-    def embed(self, image: Image.Image) -> np.ndarray:
-        batch = self.transform(image).unsqueeze(0)
-        with torch.no_grad():
-            features = self.model.forward_features(batch)
-
-        if isinstance(features, (tuple, list)):
-            features = features[0]
-
-        if features.ndim == 3:
-            tokens = features.squeeze(0).cpu()
-            prefix_token_count = getattr(self.model, "num_prefix_tokens", 1)
-            prefix_tokens = tokens[:prefix_token_count]
-            patch_tokens = tokens[prefix_token_count:] if tokens.shape[0] > prefix_token_count else tokens
-            pooled_patches = patch_tokens.mean(dim=0)
-
-            if prefix_tokens.numel() > 0:
-                return ((prefix_tokens[0] + pooled_patches) / 2).numpy()
-            return pooled_patches.numpy()
-
-        if features.ndim == 2:
-            return features.squeeze(0).cpu().numpy()
-
-        return features.cpu().numpy().flatten()
-
-
 @lru_cache(maxsize=2)
 def get_transformers_embedder(model_name: str) -> TransformersImageEmbedder:
     return TransformersImageEmbedder(model_name)
 
 
-@lru_cache(maxsize=2)
-def get_timm_embedder(model_id: str) -> TimmImageEmbedder:
-    return TimmImageEmbedder(model_id)
+@lru_cache(maxsize=1)
+def get_cat_detector():
+    if (
+        torch is None
+        or FasterRCNN_ResNet50_FPN_V2_Weights is None
+        or fasterrcnn_resnet50_fpn_v2 is None
+    ):
+        raise RuntimeError("torchvision detection dependencies are not installed")
+
+    weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+    model = fasterrcnn_resnet50_fpn_v2(weights=weights)
+    model = model.to("cpu")
+    model.eval()
+    return model, weights
 
 
-def compute_timm_ensemble_embedding(
-    image: Image.Image,
-    model_names: list[str],
-) -> tuple[np.ndarray | None, list[str]]:
-    embeddings: list[np.ndarray] = []
-    warnings: list[str] = []
+def crop_detected_cat(image: Image.Image) -> tuple[Image.Image | None, str | None]:
+    try:
+        detector, weights = get_cat_detector()
+        tensor = weights.transforms()(image)
+        with torch.no_grad():
+            prediction = detector([tensor])[0]
 
-    for model_name in model_names:
-        try:
-            embedding = get_timm_embedder(model_name).embed(image)
-        except Exception as error:
-            warnings.append(f"timm model {model_name} failed: {error}")
-            continue
+        categories = weights.meta["categories"]
+        cat_label = categories.index("cat")
+        best_box = None
+        best_score = 0.0
 
-        embeddings.append(normalize_embedding(embedding))
+        for box, label, score in zip(
+            prediction["boxes"], prediction["labels"], prediction["scores"]
+        ):
+            numeric_score = float(score.item())
+            if numeric_score < CAT_DETECTION_THRESHOLD:
+                continue
+            if int(label.item()) == cat_label and numeric_score > best_score:
+                best_box = box.tolist()
+                best_score = numeric_score
 
-    if not embeddings:
-        return None, warnings
+        if best_box is None:
+            return None, "cat detector did not find a confident cat"
 
-    return normalize_embedding(np.mean(np.stack(embeddings, axis=0), axis=0)), warnings
+        left, top, right, bottom = best_box
+        width = right - left
+        height = bottom - top
+        pad_x = width * CAT_CROP_PADDING
+        pad_y = height * CAT_CROP_PADDING
+        crop_box = (
+            max(0, int(left - pad_x)),
+            max(0, int(top - pad_y)),
+            min(image.width, int(right + pad_x)),
+            min(image.height, int(bottom + pad_y)),
+        )
+        return image.crop(crop_box), None
+    except Exception as error:
+        return None, f"cat detector failed: {error}"
 
 
 def compute_transformers_embedding(
@@ -210,6 +182,34 @@ def compute_transformers_embedding(
         return None, f"transformers model failed: {error}"
 
     return normalize_embedding(embedding), None
+
+
+def compute_cat_focused_embedding(
+    image: Image.Image,
+) -> tuple[np.ndarray | None, str | None]:
+    original_embedding, model_warning = compute_transformers_embedding(
+        image,
+        TRANSFORMERS_MODEL_NAME,
+    )
+    if original_embedding is None:
+        return None, model_warning
+
+    cat_crop, detector_warning = crop_detected_cat(image)
+    if cat_crop is None:
+        return original_embedding, detector_warning
+
+    crop_embedding, crop_warning = compute_transformers_embedding(
+        cat_crop,
+        TRANSFORMERS_MODEL_NAME,
+    )
+    if crop_embedding is None:
+        return original_embedding, crop_warning
+
+    combined = (
+        CAT_CROP_WEIGHT * crop_embedding
+        + (1.0 - CAT_CROP_WEIGHT) * original_embedding
+    )
+    return normalize_embedding(combined), None
 
 
 def normalize_embedding(values: np.ndarray) -> np.ndarray:
@@ -292,79 +292,19 @@ def compute_image_embedding(
     requested_model: str,
 ) -> tuple[np.ndarray, str, bool, str | None]:
     normalized_model = requested_model.strip().lower() or "auto"
-    attempt_messages: list[str] = []
+    warning: str | None = None
 
-    if normalized_model in COMBINED_MODEL_ALIASES:
-        embeddings: list[np.ndarray] = []
-        used_transformers = False
-        used_timm = False
-
-        transformers_embedding, transformers_warning = compute_transformers_embedding(
-            image,
-            TRANSFORMERS_MODEL_NAME,
-        )
-        if transformers_embedding is not None:
-            embeddings.append(transformers_embedding)
-            used_transformers = True
-        if transformers_warning:
-            attempt_messages.append(transformers_warning)
-
-        timm_embedding, timm_warnings = compute_timm_ensemble_embedding(
-            image,
-            TIMM_MODEL_NAMES,
-        )
-        if timm_embedding is not None:
-            embeddings.append(timm_embedding)
-            used_timm = True
-        attempt_messages.extend(timm_warnings)
-
-        if embeddings:
-            warning = "; ".join(attempt_messages) if attempt_messages else None
-            if used_transformers and used_timm:
-                resolved_model_name = (
-                    f"ensemble:transformers:{TRANSFORMERS_MODEL_NAME}"
-                    f"+timm:{'+'.join(TIMM_MODEL_NAMES)}"
-                )
-            elif used_transformers:
-                resolved_model_name = f"transformers:{TRANSFORMERS_MODEL_NAME}"
-            else:
-                resolved_model_name = f"timm:{'+'.join(TIMM_MODEL_NAMES)}"
-            return (
-                normalize_embedding(np.mean(np.stack(embeddings, axis=0), axis=0)),
-                resolved_model_name,
-                False,
-                warning,
-            )
-
-    if normalized_model in TRANSFORMERS_MODEL_ALIASES:
-        embedding, warning = compute_transformers_embedding(
-            image,
-            TRANSFORMERS_MODEL_NAME,
-        )
+    if normalized_model in DINOV3_MODEL_ALIASES:
+        embedding, warning = compute_cat_focused_embedding(image)
         if embedding is not None:
             return (
                 embedding,
-                f"transformers:{TRANSFORMERS_MODEL_NAME}",
-                False,
-                None,
-            )
-        if warning:
-            attempt_messages.append(warning)
-
-    if normalized_model in TIMM_MODEL_ALIASES or attempt_messages:
-        raw_embedding, timm_warnings = compute_timm_ensemble_embedding(image, TIMM_MODEL_NAMES)
-        attempt_messages.extend(timm_warnings)
-        if raw_embedding is not None:
-            warning = "; ".join(attempt_messages) if attempt_messages else None
-            return (
-                raw_embedding,
-                f"timm:{'+'.join(TIMM_MODEL_NAMES)}",
+                PIPELINE_MODEL_NAME,
                 False,
                 warning,
             )
 
     fallback_embedding = compute_fallback_embedding(image)
-    warning = "; ".join(attempt_messages) if attempt_messages else None
     return fallback_embedding, "fallback-hybrid", True, warning
 
 
@@ -375,15 +315,17 @@ def health() -> dict[str, Any]:
         "service": "ai",
         "defaultModel": DEFAULT_MODEL_NAME,
         "offlineModelLoad": OFFLINE_MODEL_LOAD,
-        "combinedModelAliases": sorted(COMBINED_MODEL_ALIASES),
+        "modelAliases": sorted(DINOV3_MODEL_ALIASES),
         "transformersModelName": TRANSFORMERS_MODEL_NAME,
-        "timmModelIds": TIMM_MODEL_NAMES,
+        "pipelineModelName": PIPELINE_MODEL_NAME,
         "embeddingDimensions": TARGET_EMBEDDING_DIM,
         "transformersAvailable": bool(
             AutoImageProcessor is not None and AutoModel is not None
         ),
-        "timmAvailable": bool(
-            torch is not None and create_model is not None and transforms is not None
+        "catDetectorAvailable": bool(
+            torch is not None
+            and FasterRCNN_ResNet50_FPN_V2_Weights is not None
+            and fasterrcnn_resnet50_fpn_v2 is not None
         ),
     }
 

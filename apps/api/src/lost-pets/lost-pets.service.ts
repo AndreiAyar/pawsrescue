@@ -16,7 +16,7 @@ import { basename } from 'path';
 import { UPLOADS_ROUTE_PREFIX } from '../uploads/upload-config';
 import { UploadedPhoto } from '../uploads/uploaded-photo.type';
 
-const VECTOR_DIMENSIONS = 768;
+const VECTOR_DIMENSIONS = 1024;
 
 type EmbeddingResult = {
   embedding: number[];
@@ -543,8 +543,12 @@ export class LostPetsService {
     }
 
     const vectorLiteral = this.buildVectorLiteral(embeddingResult.embedding);
-    const params: (string | number)[] = [vectorLiteral];
-    let whereClause = 'where "embedding" is not null';
+    const params: (string | number)[] = [
+      vectorLiteral,
+      embeddingResult.model,
+    ];
+    let whereClause =
+      'where "embedding" is not null and "embedding_model" = ?';
 
     if (city?.trim()) {
       whereClause += ' and lower("city") = lower(?)';
@@ -575,10 +579,10 @@ export class LostPetsService {
             "image_urls" as "imageUrls",
             "latitude",
             "longitude",
-            "embedding" <-> ?::vector as "score"
+            "embedding" <=> ?::vector as "score"
           from "lost_pets"
           ${whereClause}
-          order by "embedding" <-> ?::vector asc
+          order by "embedding" <=> ?::vector asc
           limit 10
         `,
         params,

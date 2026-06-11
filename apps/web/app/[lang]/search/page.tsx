@@ -22,11 +22,23 @@ export default async function SearchPage({
   const t = await getTranslations({ locale: lang, namespace: "Common" });
   const s = await getTranslations({ locale: lang, namespace: "Search" });
   const title = t("titles.search");
-  const response = await fetch(
-    `${process.env.API_URL ?? "http://localhost:3015"}/lost-pets`,
-    { cache: "no-store" }
-  );
-  const recentItems = response.ok ? ((await response.json()) as SearchItem[]) : [];
+  let recentItems: SearchItem[] = [];
+  let listUnavailable = false;
+
+  try {
+    const response = await fetch(
+      `${process.env.API_URL ?? "http://localhost:3015"}/lost-pets`,
+      { cache: "no-store" }
+    );
+
+    if (response.ok) {
+      recentItems = (await response.json()) as SearchItem[];
+    } else {
+      listUnavailable = true;
+    }
+  } catch {
+    listUnavailable = true;
+  }
 
   return (
     <main className="min-h-screen bg-warm-texture text-slate-900">
@@ -71,8 +83,10 @@ export default async function SearchPage({
         <section className=" w-full ">
           <div className="space-y-4">
             <SearchMapPanel
+              lang={lang}
               title={s("map.title")}
               badge={s("map.badge")}
+              openListingLabel={s("map.openListing")}
               locateLabel={s("location.locate")}
               locatingLabel={s("location.locating")}
               locationLabel={s("location.label")}
@@ -160,6 +174,11 @@ export default async function SearchPage({
                   </Link>
                 ))}
               </div>
+              {listUnavailable ? (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {s("list.unavailable")} {t("apiUnavailable")}
+                </div>
+              ) : null}
               <Button
                 buttonType="peach"
                 size="sm"

@@ -40,6 +40,8 @@ type MapProps = {
   persistClusterFeatures?: boolean;
   maxPersistedClusterFeatures?: number;
   useTileClusters?: boolean;
+  listingHrefBase?: string | null;
+  openListingLabel?: string;
 };
 
 type GeoJSONData = FeatureCollection<Geometry> | Feature<Geometry> | Geometry;
@@ -60,6 +62,8 @@ export default function MapView({
   persistClusterFeatures = false,
   maxPersistedClusterFeatures = 10000,
   useTileClusters = false,
+  listingHrefBase = null,
+  openListingLabel = "Open listing",
 }: MapProps) {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
@@ -638,7 +642,7 @@ export default function MapView({
         });
       });
 
-      map.current.on("click", "unclustered-point", (event) => {
+      const handlePetClick = (event: maptilersdk.MapLayerMouseEvent) => {
         if (!map.current || !event.features?.length) {
           return;
         }
@@ -646,11 +650,21 @@ export default function MapView({
         if (!feature || feature.geometry.type !== "Point") {
           return;
         }
-        const { name, type } = feature.properties ?? {};
+        const { id, name, type } = feature.properties ?? {};
         const coords = (feature.geometry as Point).coordinates as [
           number,
           number,
         ];
+        const petId =
+          typeof id === "number"
+            ? id
+            : typeof id === "string"
+              ? Number.parseInt(id, 10)
+              : NaN;
+        const listingHref =
+          listingHrefBase && Number.isFinite(petId)
+            ? `${listingHrefBase}/${petId}`
+            : null;
         const avatar =
           type === "cat"
             ? "🐱"
@@ -676,9 +690,11 @@ export default function MapView({
               </div>
             </div>
             <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
-              <span style="font-size:11px;color:#7c6f56;background:#fef3c7;border-radius:999px;padding:4px 8px;border:1px solid #f7e2a7;letter-spacing:0.06em;text-transform:uppercase;">
-                tap for details
-              </span>
+              ${
+                listingHref
+                  ? `<a href="${listingHref}" style="display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f172a;background:#fde68a;border-radius:999px;padding:8px 12px;border:1px solid #f59e0b;letter-spacing:0.06em;text-transform:uppercase;text-decoration:none;">${openListingLabel}</a>`
+                  : `<span style="font-size:11px;color:#7c6f56;background:#fef3c7;border-radius:999px;padding:4px 8px;border:1px solid #f7e2a7;letter-spacing:0.06em;text-transform:uppercase;">details unavailable</span>`
+              }
             </div>
           </div>
         `;
@@ -687,7 +703,12 @@ export default function MapView({
           .setLngLat(coords)
           .setHTML(html)
           .addTo(map.current);
-      });
+      };
+
+      map.current.on("click", "unclustered-point", handlePetClick);
+      map.current.on("click", "unclustered-avatar", handlePetClick);
+      map.current.on("click", "unclustered-label", handlePetClick);
+      map.current.on("click", "unclustered-ring", handlePetClick);
 
       map.current.on("mouseenter", "clusters", () => {
         if (map.current) {
@@ -705,6 +726,36 @@ export default function MapView({
         }
       });
       map.current.on("mouseleave", "unclustered-point", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "";
+        }
+      });
+      map.current.on("mouseenter", "unclustered-avatar", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "pointer";
+        }
+      });
+      map.current.on("mouseleave", "unclustered-avatar", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "";
+        }
+      });
+      map.current.on("mouseenter", "unclustered-label", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "pointer";
+        }
+      });
+      map.current.on("mouseleave", "unclustered-label", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "";
+        }
+      });
+      map.current.on("mouseenter", "unclustered-ring", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "pointer";
+        }
+      });
+      map.current.on("mouseleave", "unclustered-ring", () => {
         if (map.current) {
           map.current.getCanvas().style.cursor = "";
         }

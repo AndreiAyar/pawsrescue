@@ -162,10 +162,11 @@ describe('LostPetsService', () => {
       ok: true,
       text: async () =>
         JSON.stringify({
-          model: 'transformers:facebook/dinov3-vitl16-pretrain-lvd1689m',
+          model:
+            'dinov3-cat-crop-v1:facebook/dinov3-vitl16-pretrain-lvd1689m',
           fallbackUsed: false,
           warning: null,
-          embedding: Array.from({ length: 768 }, (_, index) => index / 1000),
+          embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
         }),
     } as Response);
 
@@ -182,7 +183,7 @@ describe('LostPetsService', () => {
 
     expect(fetchMock).toHaveBeenCalled();
     expect(result.embeddingInfo).toMatchObject({
-      model: 'transformers:facebook/dinov3-vitl16-pretrain-lvd1689m',
+      model: 'dinov3-cat-crop-v1:facebook/dinov3-vitl16-pretrain-lvd1689m',
       fallbackUsed: false,
       warning: null,
     });
@@ -198,13 +199,13 @@ describe('LostPetsService', () => {
           model: 'fallback-hybrid',
           fallbackUsed: true,
           warning: 'model download unavailable',
-          embedding: Array.from({ length: 768 }, (_, index) => index / 1000),
+          embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
         }),
       json: async () => ({
         model: 'fallback-hybrid',
         fallbackUsed: true,
         warning: 'model download unavailable',
-        embedding: Array.from({ length: 768 }, (_, index) => index / 1000),
+        embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
       }),
     } as Response);
 
@@ -233,6 +234,10 @@ describe('LostPetsService', () => {
       }),
     );
     expect(execute).toHaveBeenCalled();
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining('"embedding" <=> ?::vector'),
+      expect.arrayContaining(['fallback-hybrid']),
+    );
     expect(result).toMatchObject({
       mode: 'real',
       queryEmbedding: {

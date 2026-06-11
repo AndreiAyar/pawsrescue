@@ -42,8 +42,8 @@ type QueryEmbeddingInfo = {
 };
 
 function getMatchPercent(score: number) {
-  const normalized = 1 - Math.max(0, Math.min(score, 1));
-  return Math.round(normalized * 100);
+  const cosineSimilarity = 1 - Math.max(0, Math.min(score, 1));
+  return Math.round(cosineSimilarity * 100);
 }
 
 function getResultImageUrl(imageUrl: string | null) {

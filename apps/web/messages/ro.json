@@ -61,6 +61,8 @@
   "Common": {
     "comingSoon": "In curand",
     "backHome": "Inapoi acasa",
+    "apiUnavailable": "Serviciul nu raspunde acum. Poti reincerca in cateva secunde.",
+    "listingNotFound": "Anuntul nu a fost gasit.",
     "embedding": {
       "title": "Status embedding",
       "model": "Model",
@@ -93,7 +95,8 @@
     },
     "map": {
       "title": "Harta",
-      "badge": "Clustere"
+      "badge": "Clustere",
+      "openListing": "Deschide anuntul"
     },
     "location": {
       "label": "Locatie",
@@ -122,7 +125,8 @@
     "list": {
       "title": "Raportari in apropiere",
       "badge": "Actualizat acum",
-      "more": "Incarca mai multe"
+      "more": "Incarca mai multe",
+      "unavailable": "Lista nu a putut fi incarcata acum."
     }
   },
   "Report": {
@@ -202,7 +206,7 @@
     "embeddingNo": "Nu",
     "embeddingWarning": "Avertisment",
     "matchPercent": "potrivire",
-    "matchDistance": "Distanta",
-    "matchDistanceHint": "O distanta mai mica inseamna o potrivire vizuala mai buna."
+    "matchDistance": "Distanta cosinus",
+    "matchDistanceHint": "Similaritatea compara trasaturi DINOv3 centrate pe pisica. Este un scor de cautare, nu o dovada a identitatii."
   }
 }

@@ -43,12 +43,18 @@ export default async function PetDetailPage({
 }) {
   const { lang, id } = await params;
   const t = await getTranslations({ locale: lang, namespace: "Common" });
-  const response = await fetch(
-    `${process.env.API_URL ?? "http://localhost:3015"}/lost-pets/${id}`,
-    { cache: "no-store" },
-  );
+  let response: Response | null = null;
 
-  if (!response.ok) {
+  try {
+    response = await fetch(
+      `${process.env.API_URL ?? "http://localhost:3015"}/lost-pets/${id}`,
+      { cache: "no-store" },
+    );
+  } catch {
+    response = null;
+  }
+
+  if (!response?.ok) {
     return (
       <main className="min-h-screen bg-warm-texture px-6 py-12 text-slate-900">
         <div className="mx-auto max-w-4xl">
@@ -61,7 +67,9 @@ export default async function PetDetailPage({
           <h1 className="mt-4 font-display text-3xl font-black">
             {t("titles.petDetails")} · #{id}
           </h1>
-          <p className="mt-3 text-slate-700">Listing not found.</p>
+          <p className="mt-3 text-slate-700">
+            {response ? t("listingNotFound") : t("apiUnavailable")}
+          </p>
         </div>
       </main>
     );
