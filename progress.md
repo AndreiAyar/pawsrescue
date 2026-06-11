@@ -73,6 +73,13 @@ Latest update
   - mock list/detail now go through the same normalizer as real records
   - mock match responses now return the same top-level shape as real match responses, including `queryEmbedding: null`
   - verified `npm run --workspace api build` still passes after the contract cleanup
+- Added focused service verification for mock and real mode contracts:
+  - `apps/api/src/lost-pets/lost-pets.service.spec.ts`
+  - covers mock list/detail shape
+  - covers mock match response shape
+  - covers real list/detail normalization with embedding metadata
+  - covers real match normalization with query embedding metadata
+  - verified with `npm run --workspace api test -- lost-pets.service.spec.ts --runInBand`
 
 Next Up
 - Verify the full local stack with Docker and Browser: `report -> create -> search -> detail -> scan -> match`.
