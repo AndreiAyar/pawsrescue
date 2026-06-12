@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { LostPetEntity } from './lost-pets.entity';
@@ -96,6 +97,8 @@ type MatchResponse = {
 
 @Injectable()
 export class LostPetsService {
+  private readonly logger = new Logger(LostPetsService.name);
+
   constructor(
     @InjectRepository(LostPetEntity)
     private readonly lostPetsRepository: EntityRepository<LostPetEntity>,
@@ -252,6 +255,13 @@ export class LostPetsService {
     }
 
     const aiServiceUrl = process.env.AI_SERVICE_URL?.trim();
+    const configuredTimeout = Number.parseInt(
+      process.env.AI_REQUEST_TIMEOUT_MS || '180000',
+      10,
+    );
+    const timeoutMs = Number.isFinite(configuredTimeout)
+      ? configuredTimeout
+      : 180000;
     if (!aiServiceUrl) {
       throw new InternalServerErrorException(
         'AI_SERVICE_URL is not configured',
@@ -265,6 +275,7 @@ export class LostPetsService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ imagePaths }),
+        signal: AbortSignal.timeout(timeoutMs),
       });
 
       const rawBody = await response.text();
@@ -414,17 +425,24 @@ export class LostPetsService {
     await this.em.persistAndFlush(createdPet);
 
     if (photos.length > 0) {
-      const embeddingResult = await this.requestEmbedding(
-        this.buildStoredImagePaths(photos),
-      );
-      if (embeddingResult) {
-        await this.saveEmbeddingForPet(createdPet.id, embeddingResult);
-        createdPet.embedding = this.buildVectorLiteral(
-          embeddingResult.embedding,
+      try {
+        const embeddingResult = await this.requestEmbedding(
+          this.buildStoredImagePaths(photos),
         );
-        createdPet.embeddingModel = embeddingResult.model;
-        createdPet.embeddingFallbackUsed = embeddingResult.fallbackUsed;
-        createdPet.embeddingWarning = embeddingResult.warning ?? undefined;
+        if (embeddingResult) {
+          await this.saveEmbeddingForPet(createdPet.id, embeddingResult);
+          createdPet.embedding = this.buildVectorLiteral(
+            embeddingResult.embedding,
+          );
+          createdPet.embeddingModel = embeddingResult.model;
+          createdPet.embeddingFallbackUsed = embeddingResult.fallbackUsed;
+          createdPet.embeddingWarning = embeddingResult.warning ?? undefined;
+        }
+      } catch (error) {
+        this.logger.error(
+          `Pet ${createdPet.id} was saved, but its embedding could not be generated`,
+          error instanceof Error ? error.stack : String(error),
+        );
       }
     }
 

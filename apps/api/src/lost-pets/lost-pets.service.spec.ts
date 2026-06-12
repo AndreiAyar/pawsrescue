@@ -190,6 +190,41 @@ describe('LostPetsService', () => {
     });
   });
 
+  it('keeps a saved report available when embedding generation fails', async () => {
+    process.env.USE_MOCK_DATA = 'false';
+
+    const createdEntity = buildEntity();
+    createdEntity.id = 22;
+    createdEntity.embedding = undefined;
+    createdEntity.embeddingModel = undefined;
+    createdEntity.embeddingFallbackUsed = undefined;
+    createdEntity.embeddingWarning = undefined;
+    repository.create.mockReturnValue(createdEntity);
+
+    jest
+      .spyOn(global, 'fetch' as never)
+      .mockRejectedValue(new Error('AI down'));
+    (
+      service as unknown as {
+        logger: { error: (...args: unknown[]) => void };
+      }
+    ).logger.error = jest.fn();
+
+    const result = await service.create(
+      {
+        name: 'Luna',
+        type: 'dog',
+        email: 'owner@example.com',
+        latitude: 44.43,
+        longitude: 26.1,
+      },
+      [buildPhoto('/shared-uploads/luna.jpg')],
+    );
+
+    expect(entityManager.persistAndFlush).toHaveBeenCalledWith(createdEntity);
+    expect(result).toMatchObject({ id: 22, embeddingInfo: null });
+  });
+
   it('returns normalized real match results with query embedding metadata', async () => {
     process.env.USE_MOCK_DATA = 'false';
 

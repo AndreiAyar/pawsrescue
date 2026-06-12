@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Button } from "@repo/ui/button";
 import { FileUpload } from "@repo/ui/fileUpload";
 import { FormField } from "@repo/ui/formField";
+import { ImageLightbox } from "@repo/ui/imageLightbox";
 import { Input } from "@repo/ui/input";
+
+const ResultMap = dynamic(() => import("../../components/Map/Map"), {
+  ssr: false,
+});
 
 type ScanFormProps = {
   lang: string;
@@ -23,7 +30,28 @@ type ScanFormProps = {
     resultsTitle: string;
     openListing: string;
     matchPercent: string;
+    demoBadge: string;
+    demoTitle: string;
+    demoBody: string;
+    demoAction: string;
+    demoSelected: string;
+    demoSubmit: string;
+    demoAlt: string;
+    locationTitle: string;
+    showOnMap: string;
+    selectedOnMap: string;
   };
+};
+
+type ScanResult = {
+  id: number;
+  name: string;
+  type: string;
+  city: string | null;
+  imageUrl: string | null;
+  latitude: number;
+  longitude: number;
+  score: number;
 };
 
 function getMatchPercent(score: number) {
@@ -51,23 +79,47 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
   const [city, setCity] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [demoSelected, setDemoSelected] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState(false);
   const [error, setError] = useState("");
-  const [results, setResults] = useState<
-    Array<{
-      id: number;
-      name: string;
-      type: string;
-      city: string | null;
-      imageUrl: string | null;
-      score: number;
-    }>
-  >([]);
+  const [results, setResults] = useState<ScanResult[]>([]);
+  const [selectedResultId, setSelectedResultId] = useState<number | null>(null);
+  const selectedResult =
+    results.find((result) => result.id === selectedResultId) ?? results[0];
+
+  const loadDemoPhoto = async () => {
+    setLoadingDemo(true);
+    setError("");
+
+    try {
+      const response = await fetch("/demo-cat.png");
+      if (!response.ok) throw new Error("Could not load demo photo.");
+
+      const blob = await response.blob();
+      const demoFile = new File([blob], "demo-pisica-pierduta.png", {
+        type: blob.type || "image/png",
+      });
+      setPhotos([demoFile]);
+      setDemoSelected(true);
+      setResults([]);
+      setSelectedResultId(null);
+    } catch (demoError) {
+      setError(
+        demoError instanceof Error
+          ? demoError.message
+          : "Could not load demo photo.",
+      );
+    } finally {
+      setLoadingDemo(false);
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
     setError("");
     setResults([]);
+    setSelectedResultId(null);
 
     const payload = new FormData();
     if (city.trim()) {
@@ -90,7 +142,11 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
         return;
       }
 
-      setResults(Array.isArray(data?.matches) ? data.matches : []);
+      const matches = Array.isArray(data?.matches)
+        ? (data.matches as ScanResult[])
+        : [];
+      setResults(matches);
+      setSelectedResultId(matches[0]?.id ?? null);
     } catch (scanError) {
       setError(
         scanError instanceof Error
@@ -120,6 +176,56 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
           </p>
         </div>
 
+        <div className="mb-6 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <button
+            type="button"
+            onClick={loadDemoPhoto}
+            disabled={loadingDemo}
+            className="group relative min-h-72 overflow-hidden rounded-[1.75rem] border-2 border-amber-300 bg-amber-100 text-left shadow-[0_24px_55px_-32px_rgba(120,53,15,0.6)] transition hover:-translate-y-1 hover:border-amber-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/70 disabled:cursor-wait disabled:opacity-80"
+          >
+            <Image
+              src="/demo-cat.png"
+              alt=""
+              fill
+              sizes="(min-width: 1024px) 55vw, 100vw"
+              className="object-cover transition duration-500 group-hover:scale-[1.03]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/55 to-transparent" />
+            <div className="relative flex min-h-72 max-w-md flex-col justify-between p-6 text-white sm:p-8">
+              <span className="w-fit rounded-full bg-amber-300 px-4 py-1.5 text-sm font-black tracking-[0.24em] text-slate-950">
+                {labels.demoBadge}
+              </span>
+              <div>
+                <h2 className="font-display text-3xl font-black sm:text-4xl">
+                  {labels.demoTitle}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-white/85 sm:text-base">
+                  {labels.demoBody}
+                </p>
+                <span className="mt-5 inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-bold text-slate-950 shadow-lg transition group-hover:bg-amber-200">
+                  {loadingDemo ? labels.submitting : labels.demoAction}
+                </span>
+              </div>
+            </div>
+          </button>
+
+          <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-5 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)] sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              {labels.photosLabel}
+            </p>
+            <ImageLightbox
+              src="/demo-cat.png"
+              alt={labels.demoAlt}
+              buttonClassName="mt-3 h-52 w-full rounded-2xl border border-slate-200 bg-slate-100 sm:h-56"
+              className="h-full w-full object-cover"
+            />
+            <p className="mt-3 text-sm font-semibold text-slate-900">
+              {demoSelected ? labels.demoSelected : labels.demoAction}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">{labels.photosHint}</p>
+          </div>
+        </div>
+
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <form
             onSubmit={handleSubmit}
@@ -141,12 +247,14 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                     id="photos"
                     name="photos"
                     maxFiles={4}
+                    files={photos}
                     onChange={(event) => {
                       setPhotos(
                         event.target.files
                           ? Array.from(event.target.files)
                           : [],
                       );
+                      setDemoSelected(false);
                     }}
                   />
                   <p className="text-xs text-slate-500">{labels.photosHint}</p>
@@ -167,7 +275,11 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
               innerClassName="w-full sm:w-auto"
               disabled={submitting}
             >
-              {submitting ? labels.submitting : labels.submit}
+              {submitting
+                ? labels.submitting
+                : demoSelected
+                  ? labels.demoSubmit
+                  : labels.submit}
             </Button>
           </form>
 
@@ -193,12 +305,11 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                     <div className="flex flex-col gap-4 sm:flex-row">
                       <div className="h-28 w-full overflow-hidden rounded-xl bg-slate-100 sm:w-36">
                         {getResultImageUrl(result.imageUrl) ? (
-                          <img
-                            src={
-                              getResultImageUrl(result.imageUrl) ?? undefined
-                            }
+                          <ImageLightbox
+                            src={getResultImageUrl(result.imageUrl) ?? ""}
                             alt={result.name}
-                            className="h-full w-full bg-slate-100 object-contain"
+                            buttonClassName="h-full w-full bg-slate-100"
+                            className="h-full w-full object-contain"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center text-xs text-slate-400">
@@ -230,10 +341,66 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                         >
                           {labels.openListing}
                         </Link>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedResultId(result.id)}
+                          className={`ml-3 mt-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${selectedResult?.id === result.id ? "bg-amber-300 text-slate-950" : "bg-slate-100 text-slate-700 hover:bg-amber-100"}`}
+                        >
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="h-4 w-4"
+                          >
+                            <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                            <circle cx="12" cy="10" r="2.5" />
+                          </svg>
+                          {selectedResult?.id === result.id
+                            ? labels.selectedOnMap
+                            : labels.showOnMap}
+                        </button>
                       </div>
                     </div>
                   </article>
                 ))}
+
+                {selectedResult ? (
+                  <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-[0_18px_34px_-24px_rgba(120,53,15,0.45)]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 bg-amber-50 px-4 py-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-800">
+                          {labels.locationTitle}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                          {selectedResult.name}
+                          {selectedResult.city
+                            ? ` · ${selectedResult.city}`
+                            : ""}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-amber-200">
+                        {selectedResult.latitude.toFixed(4)},{" "}
+                        {selectedResult.longitude.toFixed(4)}
+                      </span>
+                    </div>
+                    <div className="h-72 w-full sm:h-80">
+                      <ResultMap
+                        showLocateButton={false}
+                        showSearchControl={false}
+                        maxReverseGeocodeRequests={0}
+                        listingHrefBase={`/${lang}/pets`}
+                        openListingLabel={labels.openListing}
+                        focusLocation={{
+                          latitude: selectedResult.latitude,
+                          longitude: selectedResult.longitude,
+                          label: selectedResult.name,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
           </section>

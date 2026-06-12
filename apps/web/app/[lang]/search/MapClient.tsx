@@ -31,7 +31,6 @@ export default function MapClient({
   showLocateButton = true,
 }: MapClientProps) {
   const useTileClusters = true;
-  console.log('aa',process.env.NEXT_PUBLIC_CLUSTER_MODE)
   const [location, setLocation] = useState<string>("");
   const [permissionState, setPermissionState] = useState<
     "granted" | "denied" | "prompt" | "unknown"
@@ -60,10 +59,7 @@ export default function MapClient({
             return;
           }
 
-          const nextState = status.state as
-            | "granted"
-            | "denied"
-            | "prompt";
+          const nextState = status.state as "granted" | "denied" | "prompt";
           setPermissionState(nextState);
           if (nextState !== "denied") {
             setLocateRequestId((prev) => prev + 1);
@@ -72,10 +68,7 @@ export default function MapClient({
           }
 
           status.onchange = () => {
-            const updated = status.state as
-              | "granted"
-              | "denied"
-              | "prompt";
+            const updated = status.state as "granted" | "denied" | "prompt";
             if (isMounted) {
               setPermissionState(updated);
               if (updated !== "denied") {

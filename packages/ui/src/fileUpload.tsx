@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef, useImperativeHandle } from "react";
+import { useEffect, useState, useRef, useImperativeHandle } from "react";
+import { ImageLightbox } from "./imageLightbox";
 
 interface FileUploadProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
@@ -8,6 +9,7 @@ interface FileUploadProps
   accept?: string;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   showPreview?: boolean;
+  files?: File[];
   // React Hook Form support
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
 }
@@ -23,6 +25,27 @@ const ALLOWED_PHOTO_TYPES = [
   "image/heif",
 ];
 
+function FilePreview({ file, index }: { file: File; index: number }) {
+  const [previewUrl, setPreviewUrl] = useState("");
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!previewUrl) return null;
+
+  return (
+    <ImageLightbox
+      src={previewUrl}
+      alt={`Photo ${index + 1}`}
+      buttonClassName="aspect-square w-full rounded-lg border border-gray-200"
+      className="h-full w-full object-cover"
+    />
+  );
+}
+
 export const FileUpload = ({
   className,
   maxFiles = 5,
@@ -30,6 +53,7 @@ export const FileUpload = ({
   onChange,
   onBlur,
   showPreview = true,
+  files,
   ...props
 }: FileUploadProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -38,6 +62,17 @@ export const FileUpload = ({
 
   // Use forwarded ref from RHF if available, otherwise internal ref
   const fileInputRef = internalRef;
+
+  useEffect(() => {
+    if (!files) return;
+
+    setSelectedFiles(files);
+    if (internalRef.current) {
+      const dt = new DataTransfer();
+      files.forEach((file) => dt.items.add(file));
+      internalRef.current.files = dt.files;
+    }
+  }, [files]);
 
   const isValidPhotoType = (file: File): boolean => {
     return ALLOWED_PHOTO_TYPES.includes(file.type.toLowerCase());
@@ -123,7 +158,7 @@ export const FileUpload = ({
       {/* Upload Area */}
       <div
         className={
-          className +
+          (className ?? "") +
           ` border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
             isDragOver
               ? "border-blue-400 bg-blue-50"
@@ -179,13 +214,7 @@ export const FileUpload = ({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {selectedFiles.map((file, index) => (
               <div key={index} className="relative group w-16 h-16">
-                <div className="aspect-square rounded-lg overflow-hidden border border-gray-200">
-                  <img
-                  src={URL.createObjectURL(file)}
-                  alt={`Photo ${index + 1}`}
-                  className="w-full h-full object-cover"
-                  />
-                </div>
+                <FilePreview file={file} index={index} />
 
                 {/* Remove button */}
                 <button

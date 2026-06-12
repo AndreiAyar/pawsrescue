@@ -143,6 +143,16 @@
     "empty": "Inca nu exista rezultate. Incarca poze si porneste o cautare.",
     "resultsTitle": "Potriviri",
     "openListing": "Deschide anuntul",
-    "matchPercent": "potrivire"
+    "matchPercent": "potrivire",
+    "demoBadge": "DEMO",
+    "demoTitle": "Testeaza cautarea acum",
+    "demoBody": "Apasa aici pe poza preincarcata. O vom pune automat in formular ca sa vezi cum este gasita pisica pierduta.",
+    "demoAction": "Apasa pe poza preincarcata",
+    "demoSelected": "Poza demo este incarcata si gata de cautare.",
+    "demoSubmit": "Cauta demo",
+    "demoAlt": "Pisica argintie din fotografia demo",
+    "locationTitle": "Locatia pisicii pe harta",
+    "showOnMap": "Vezi pe harta",
+    "selectedOnMap": "Pe harta"
   }
 }

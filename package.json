@@ -9,7 +9,10 @@
     "check-types": "turbo run check-types",
     "check:ai": "node scripts/check-ai-runtime.mjs",
     "docker:up": "docker compose up --build",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "docker:prod:config": "docker compose --env-file .env.production.local -f docker-compose.prod.yml config",
+    "docker:prod:up": "docker compose --env-file .env.production.local -f docker-compose.prod.yml up -d --build",
+    "docker:prod:down": "docker compose --env-file .env.production.local -f docker-compose.prod.yml down"
   },
   "devDependencies": {
     "@mikro-orm/cli": "^6.5.2",

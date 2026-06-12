@@ -27,6 +27,16 @@ export default async function ScanPage({
         resultsTitle: t("resultsTitle"),
         openListing: t("openListing"),
         matchPercent: t("matchPercent"),
+        demoBadge: t("demoBadge"),
+        demoTitle: t("demoTitle"),
+        demoBody: t("demoBody"),
+        demoAction: t("demoAction"),
+        demoSelected: t("demoSelected"),
+        demoSubmit: t("demoSubmit"),
+        demoAlt: t("demoAlt"),
+        locationTitle: t("locationTitle"),
+        showOnMap: t("showOnMap"),
+        selectedOnMap: t("selectedOnMap"),
       }}
     />
   );

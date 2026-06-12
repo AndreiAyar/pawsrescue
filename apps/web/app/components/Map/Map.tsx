@@ -10,9 +10,7 @@ import { createMapLibreGlMapController } from "@maptiler/geocoding-control/mapli
 import "@maptiler/geocoding-control/style.css";
 import { createClusterCache } from "./clusterCache";
 import { getTileRequestForBounds } from "./clusterTiles";
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
-const apiBase = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
-const isProd = process.env.NODE_ENV === "production";
+const apiBase = "/api";
 const BBOX_PRECISION = 1e5;
 const BBOX_PADDING_FACTOR = 0.2;
 const MAX_CACHED_COVERAGE_PER_ZOOM = 64;
@@ -43,6 +41,11 @@ type MapProps = {
   useTileClusters?: boolean;
   listingHrefBase?: string | null;
   openListingLabel?: string;
+  focusLocation?: {
+    latitude: number;
+    longitude: number;
+    label?: string;
+  } | null;
 };
 
 type GeoJSONData = FeatureCollection<Geometry> | Feature<Geometry> | Geometry;
@@ -66,16 +69,20 @@ export default function MapView({
   useTileClusters = false,
   listingHrefBase = null,
   openListingLabel = "Open listing",
+  focusLocation = null,
 }: MapProps) {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
   >(undefined);
   const [currentPosition, setCurrentPosition] = useState({ lng: 0, lat: 0 });
   const [locating, setLocating] = useState(false);
+  const focusLatitude = focusLocation?.latitude;
+  const focusLongitude = focusLocation?.longitude;
 
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<maptilersdk.Marker | null>(null);
   const userMarkerRef = useRef<maptilersdk.Marker | null>(null);
+  const focusMarkerRef = useRef<maptilersdk.Marker | null>(null);
   const map = useRef<maptilersdk.Map | null>(null);
   const intialPosRef = useRef({ lang: 26.102, lat: 44.435 });
   const geocodeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -114,10 +121,7 @@ export default function MapView({
 
   const makeClustersUrl = (bbox: string, zoomLevel: number) => {
     const normalizedZoom = Math.max(0, Math.floor(zoomLevel));
-    if (isProd && apiBase) {
-      return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
-    }
-    return `/api/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
+    return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
   };
 
   const makeTileClustersUrl = (
@@ -128,10 +132,7 @@ export default function MapView({
   ) => {
     const normalizedZoom = Math.max(0, Math.floor(zoomLevel));
     const bufferParam = buffer > 1 ? `?buffer=${buffer}` : "";
-    if (isProd && apiBase) {
-      return `${apiBase}/lost-pets/clusters/tile/${normalizedZoom}/${x}/${y}${bufferParam}`;
-    }
-    return `/api/lost-pets/clusters/tile/${normalizedZoom}/${x}/${y}${bufferParam}`;
+    return `${apiBase}/lost-pets/clusters/tile/${normalizedZoom}/${x}/${y}${bufferParam}`;
   };
 
   const refreshClusters = async (zoomLevel?: number) => {
@@ -347,9 +348,47 @@ export default function MapView({
       if (map.current) {
         map.current.remove();
         map.current = null;
+        focusMarkerRef.current = null;
       }
     };
   }, [intialPosRef?.current?.lang, intialPosRef?.current?.lat]);
+
+  useEffect(() => {
+    if (
+      !map.current ||
+      typeof focusLatitude !== "number" ||
+      typeof focusLongitude !== "number" ||
+      !Number.isFinite(focusLatitude) ||
+      !Number.isFinite(focusLongitude)
+    ) {
+      focusMarkerRef.current?.remove();
+      focusMarkerRef.current = null;
+      return;
+    }
+
+    const coordinates: [number, number] = [focusLongitude, focusLatitude];
+
+    if (!focusMarkerRef.current) {
+      const markerElement = document.createElement("div");
+      markerElement.style.width = "24px";
+      markerElement.style.height = "24px";
+      markerElement.style.borderRadius = "999px";
+      markerElement.style.background = "#f59e0b";
+      markerElement.style.border = "4px solid #ffffff";
+      markerElement.style.boxShadow =
+        "0 0 0 6px rgba(245,158,11,0.28), 0 12px 24px -10px rgba(15,23,42,0.65)";
+
+      focusMarkerRef.current = new maptilersdk.Marker({
+        element: markerElement,
+      })
+        .setLngLat(coordinates)
+        .addTo(map.current);
+    } else {
+      focusMarkerRef.current.setLngLat(coordinates);
+    }
+
+    map.current.easeTo({ center: coordinates, zoom: 14, duration: 700 });
+  }, [focusLatitude, focusLongitude]);
 
   useEffect(() => {
     if (!map.current) {

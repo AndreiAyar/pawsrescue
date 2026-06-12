@@ -13,7 +13,8 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { randomUUID } from 'crypto';
+import { unlink } from 'fs/promises';
 import { ensureUploadsDir } from '../uploads/upload-config';
 import { UploadedPhoto } from '../uploads/uploaded-photo.type';
 import { LostPetsService } from './lost-pets.service';
@@ -28,6 +29,21 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/heic',
   'image/heif',
 ]);
+
+const UPLOAD_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'image/heic': '.heic',
+  'image/heif': '.heif',
+};
+
+function buildUploadFilename(file: { mimetype: string }, prefix = '') {
+  const extension = UPLOAD_EXTENSION_BY_MIME_TYPE[file.mimetype.toLowerCase()];
+  return `${prefix}${Date.now()}-${randomUUID()}${extension ?? '.jpg'}`;
+}
 
 @Controller('lost-pets')
 export class LostPetsController {
@@ -76,10 +92,7 @@ export class LostPetsController {
           callback(null, uploadsDir);
         },
         filename: (_request, file, callback) => {
-          const uniquePrefix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          const extension =
-            extname(file.originalname || '').toLowerCase() || '.jpg';
-          callback(null, `${uniquePrefix}${extension}`);
+          callback(null, buildUploadFilename(file));
         },
       }),
       fileFilter: (_request, file, callback) => {
@@ -94,11 +107,16 @@ export class LostPetsController {
       },
     }),
   )
-  create(
+  async create(
     @Body() lostPet: LostPetDTO,
     @UploadedFiles() photos: UploadedPhoto[] = [],
   ) {
-    return this.lostPetsService.create(lostPet, photos);
+    try {
+      return await this.lostPetsService.create(lostPet, photos);
+    } catch (error) {
+      await Promise.allSettled(photos.map((photo) => unlink(photo.path)));
+      throw error;
+    }
   }
 
   @Post('match')
@@ -110,10 +128,7 @@ export class LostPetsController {
           callback(null, uploadsDir);
         },
         filename: (_request, file, callback) => {
-          const uniquePrefix = `match-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          const extension =
-            extname(file.originalname || '').toLowerCase() || '.jpg';
-          callback(null, `${uniquePrefix}${extension}`);
+          callback(null, buildUploadFilename(file, 'match-'));
         },
       }),
       fileFilter: (_request, file, callback) => {
@@ -128,10 +143,14 @@ export class LostPetsController {
       },
     }),
   )
-  match(
+  async match(
     @Body('city') city: string | undefined,
     @UploadedFiles() photos: UploadedPhoto[] = [],
   ) {
-    return this.lostPetsService.match(photos, city);
+    try {
+      return await this.lostPetsService.match(photos, city);
+    } finally {
+      await Promise.allSettled(photos.map((photo) => unlink(photo.path)));
+    }
   }
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { ImageLightbox } from "@repo/ui/imageLightbox";
 
 type PetDetail = {
   id: number;
@@ -91,12 +92,21 @@ export default async function PetDetailPage({
               {pet.type} {pet.city ? `· ${pet.city}` : ""}
             </p>
 
-            {getPetImageUrl(pet.imageUrls[0]) ? (
-              <img
-                src={getPetImageUrl(pet.imageUrls[0]) ?? undefined}
-                alt={pet.name}
-                className="mt-5 h-72 w-full rounded-2xl bg-slate-100 object-contain"
-              />
+            {pet.imageUrls.length ? (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {pet.imageUrls.map((imageUrl, index) => {
+                  const src = getPetImageUrl(imageUrl);
+                  return src ? (
+                    <ImageLightbox
+                      key={`${imageUrl}-${index}`}
+                      src={src}
+                      alt={`${pet.name} - photo ${index + 1}`}
+                      buttonClassName={`w-full rounded-2xl bg-slate-100 ${index === 0 ? "h-72 sm:col-span-2" : "h-48"}`}
+                      className="h-full w-full object-contain"
+                    />
+                  ) : null;
+                })}
+              </div>
             ) : null}
 
             <div className="mt-5 grid gap-4 text-sm text-slate-700 sm:grid-cols-2">
