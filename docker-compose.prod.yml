@@ -22,7 +22,14 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3015
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.production.local}
+      DATABASE_URL: ${DATABASE_URL:-}
+      DB_HOST_NEST: ${DB_HOST_NEST:-}
+      DB_PORT_NEST: ${DB_PORT_NEST:-5432}
+      DB_USER_NEST: ${DB_USER_NEST:-}
+      DB_PASSWORD_NEST: ${DB_PASSWORD_NEST:-}
+      DB_NAME_NEST: ${DB_NAME_NEST:-postgres}
+      DB_SSL: ${DB_SSL:-true}
+      DB_SSL_REJECT_UNAUTHORIZED: ${DB_SSL_REJECT_UNAUTHORIZED:-false}
       DB_POOL_MAX: ${DB_POOL_MAX:-10}
       AI_SERVICE_URL: http://ai:8000
       AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-180000}

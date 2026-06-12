@@ -6,11 +6,11 @@ PostgreSQL stays on Supabase.
 
 ## 1. Supabase
 
-1. In Supabase, open **Connect** and copy the **Session pooler** URI. A regular
+1. In Supabase, open **Connect** and select **Session pooler**. A regular
    DigitalOcean Droplet is commonly IPv4-only, while Supabase direct connections
    use IPv6 by default. Session mode is also appropriate for a persistent API.
-2. Keep port `5432`, append `?sslmode=require` if it is missing, and URL-encode
-   special characters in the database password.
+2. Copy its host, port, username, password, and database into the separate
+   `DB_*` variables. Separate variables do not require URL-encoding the password.
 3. Set `DB_POOL_MAX=10`. Start small because every API process owns its pool.
 4. Confirm the `vector` extension is enabled. The existing migration also runs
    `create extension if not exists vector`.
@@ -76,7 +76,13 @@ chmod +x deploy/deploy.sh
 
 Set these values in `.env.production.local`:
 
-- `DATABASE_URL`: Supabase Session pooler URI with `sslmode=require`.
+- `DB_HOST_NEST`: Supabase Session pooler hostname.
+- `DB_PORT_NEST`: `5432` for Session mode.
+- `DB_USER_NEST`: normally `postgres.PROJECT_REF`, not only `postgres`.
+- `DB_PASSWORD_NEST`: the Supabase database password.
+- `DB_NAME_NEST`: normally `postgres`.
+- `DB_SSL`: `true`.
+- `DB_SSL_REJECT_UNAUTHORIZED`: `false` for the Supabase pooler.
 - `DB_POOL_MAX`: keep `10` initially.
 - `AI_REQUEST_TIMEOUT_MS`: keep `180000` initially; this caps an AI request at
   three minutes.

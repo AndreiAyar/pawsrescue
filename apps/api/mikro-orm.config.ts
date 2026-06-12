@@ -9,9 +9,24 @@ config({ path: '.env' });
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
 const poolMax = Number.parseInt(process.env.DB_POOL_MAX || '10', 10);
+const hasSeparateDatabaseConfig = [
+  process.env.DB_HOST_NEST,
+  process.env.DB_USER_NEST,
+  process.env.DB_PASSWORD_NEST,
+  process.env.DB_NAME_NEST,
+].every((value) => Boolean(value?.trim()));
+const sslEnabled = process.env.DB_SSL === 'true';
+const sslRejectUnauthorized =
+  process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false';
 
-if (process.env.NODE_ENV === 'production' && !databaseUrl) {
-  throw new Error('DATABASE_URL is required in production');
+if (
+  process.env.NODE_ENV === 'production' &&
+  !databaseUrl &&
+  !hasSeparateDatabaseConfig
+) {
+  throw new Error(
+    'Configure DATABASE_URL or all DB_HOST_NEST, DB_USER_NEST, DB_PASSWORD_NEST, and DB_NAME_NEST values',
+  );
 }
 
 const db_config = defineConfig({
@@ -24,6 +39,17 @@ const db_config = defineConfig({
         user: process.env.DB_USER_NEST || 'postgres',
         password: process.env.DB_PASSWORD_NEST || 'password',
         dbName: process.env.DB_NAME_NEST || 'mydb',
+        ...(sslEnabled
+          ? {
+              driverOptions: {
+                connection: {
+                  ssl: {
+                    rejectUnauthorized: sslRejectUnauthorized,
+                  },
+                },
+              },
+            }
+          : {}),
       }),
   pool: {
     min: 0,
