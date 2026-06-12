@@ -29,7 +29,7 @@ The Torch image and model cache are much heavier than the web and API services.
 2. Enable DigitalOcean backups.
 3. Configure the VPS firewall to allow inbound `22/tcp` from your own IP only,
    plus `80/tcp` and `443/tcp` from all addresses. Do not expose
-   `3000`, `3015`, `5432`, or `8000`.
+   `3060`, `3015`, `5432`, or `8000`.
 4. Add a DNS `A` record for the production hostname pointing to the Droplet IP.
 5. Install Docker Engine and the Docker Compose plugin from Docker's official
    Ubuntu repository.
@@ -97,6 +97,10 @@ the oldest migration in this repository expects the `lost_pets` table to exist.
 The deploy command waits up to four minutes for AI, API, and Web health checks.
 It exits with an error instead of reporting a successful deployment when a
 container is unhealthy.
+
+Nginx reaches the Web container on `127.0.0.1:3060`. Next.js also listens on
+port `3060` inside Docker, avoiding conflicts and keeping the Web port consistent
+in development, Docker, health checks, and Nginx.
 
 ## 5. Updates and rollback
 

@@ -58,18 +58,18 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 3060
       HOSTNAME: 0.0.0.0
       API_URL: http://api:3015
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3060:3060"
     healthcheck:
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3000/ro').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3060/ro').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 15s
       timeout: 5s

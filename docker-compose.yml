@@ -57,11 +57,11 @@ services:
       api:
         condition: service_started
     environment:
-      PORT: ${WEB_PORT:-3000}
+      PORT: ${WEB_PORT:-3060}
       API_URL: http://api:3015
       NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-3015}
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "${WEB_PORT:-3060}:3060"
 
   ai:
     build:
