@@ -14,7 +14,7 @@
 
 ## Home Page Notes
 - Keep the static map preview (performance + SEO).
-- Add small illustrated accents around stats and “How it works.”
+- Add small illustrated accents around stats and “How it works.”. Very succint.
 - Maintain clear CTAs: Report / Scan / Browse map.
 
 ## Mobile Direction (Future)
