@@ -17,6 +17,7 @@ Users can search manually on a map or upload photos to find AI-based matches.
 - Owner edit/recovery via email link.
 - Alerts (initially email) for potential matches.
 - Verification basics (email link, optional phone later).
+- Multi file upload
 
 ## UX Flow (Draft)
 Report Lost Pet
