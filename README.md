@@ -36,7 +36,7 @@ This Turborepo has some additional tools already setup for you:
 
 ### Build
 
-To build all apps and packages, run the following command:
+To build all apps and packages for this monorepo, run the following command:
 
 ```
 cd my-turborepo
