@@ -90,7 +90,7 @@ yarn exec turbo dev --filter=web
 pnpm exec turbo dev --filter=web
 ```
 
-### Remote Caching
+### Remote Caching (we dont use this ATM.. no Vercel Hosting)
 
 > [!TIP]
 > Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
