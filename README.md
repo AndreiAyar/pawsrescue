@@ -1,4 +1,4 @@
-Fullstack app for finding pets with the help of AI. 🐈🐱
+Fullstack app for finding pets with the help of AI. 🐈🐱 (Dogs included ! :) )
 
 # Turborepo starter
 
