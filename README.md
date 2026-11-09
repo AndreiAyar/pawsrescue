@@ -1,5 +1,21 @@
 Fullstack app for finding pets with the help of AI. 🐈
 
+## Local development
+
+1. Install Node.js 20.9+ and Python 3.11–3.13.
+2. Run `npm install`, then `npm run --workspace ai setup`. To choose a Python
+   interpreter explicitly, use `PYTHON_BIN=python3.11 npm run --workspace ai setup`.
+3. Start PostgreSQL with pgvector installed. With Docker installed, run
+   `docker compose up -d db`. Enable the extension in your development database
+   with `CREATE EXTENSION IF NOT EXISTS vector;` before creating the schema.
+4. Copy `apps/api/.env.example` to `apps/api/.env.development.local` and configure
+   your database connection. For a new, empty development database, initialize
+   its schema with `cd apps/api && npx mikro-orm schema:create --run`.
+5. Run `npm run dev` from the repository root.
+
+Local services: web at http://localhost:3060, docs at http://localhost:3001,
+API at http://localhost:3015, and AI health at http://localhost:8000/health.
+
 # Turborepo starter
 
 This Turborepo starter is maintained by the Turborepo core team.
