@@ -11,10 +11,8 @@ jest.mock('supercluster', () => {
   }));
 });
 
-const { LostPetsService } =
-  require('./lost-pets.service') as typeof import('./lost-pets.service');
-const { LostPetEntity } =
-  require('./lost-pets.entity') as typeof import('./lost-pets.entity');
+import { LostPetsService } from './lost-pets.service';
+import { LostPetEntity } from './lost-pets.entity';
 
 describe('LostPetsService', () => {
   let service: LostPetsService;
@@ -160,15 +158,18 @@ describe('LostPetsService', () => {
     createdEntity.embeddingWarning = undefined;
     repository.create.mockReturnValue(createdEntity);
 
-    const fetchMock = jest.spyOn(global, 'fetch' as never).mockResolvedValue({
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
-      text: async () =>
-        JSON.stringify({
-          model: 'dinov3-cat-crop-v1:facebook/dinov3-vitl16-pretrain-lvd1689m',
-          fallbackUsed: false,
-          warning: null,
-          embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
-        }),
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            model:
+              'dinov3-cat-crop-v1:facebook/dinov3-vitl16-pretrain-lvd1689m',
+            fallbackUsed: false,
+            warning: null,
+            embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
+          }),
+        ),
     } as Response);
 
     const result = await service.create(
@@ -201,9 +202,7 @@ describe('LostPetsService', () => {
     createdEntity.embeddingWarning = undefined;
     repository.create.mockReturnValue(createdEntity);
 
-    jest
-      .spyOn(global, 'fetch' as never)
-      .mockRejectedValue(new Error('AI down'));
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('AI down'));
     (
       service as unknown as {
         logger: { error: (...args: unknown[]) => void };
@@ -228,21 +227,24 @@ describe('LostPetsService', () => {
   it('returns normalized real match results with query embedding metadata', async () => {
     process.env.USE_MOCK_DATA = 'false';
 
-    const fetchMock = jest.spyOn(global, 'fetch' as never).mockResolvedValue({
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
-      text: async () =>
-        JSON.stringify({
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            model: 'fallback-hybrid',
+            fallbackUsed: true,
+            warning: 'model download unavailable',
+            embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
+          }),
+        ),
+      json: () =>
+        Promise.resolve({
           model: 'fallback-hybrid',
           fallbackUsed: true,
           warning: 'model download unavailable',
           embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
         }),
-      json: async () => ({
-        model: 'fallback-hybrid',
-        fallbackUsed: true,
-        warning: 'model download unavailable',
-        embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
-      }),
     } as Response);
 
     execute.mockResolvedValue([

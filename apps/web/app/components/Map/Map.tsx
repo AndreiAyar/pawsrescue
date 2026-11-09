@@ -10,11 +10,18 @@ import { createMapLibreGlMapController } from "@maptiler/geocoding-control/mapli
 import "@maptiler/geocoding-control/style.css";
 import { createClusterCache } from "./clusterCache";
 import { getTileRequestForBounds } from "./clusterTiles";
+import { useMapCallback } from "./useMapCallback";
 const apiBase = "/api";
 const BBOX_PRECISION = 1e5;
 const BBOX_PADDING_FACTOR = 0.2;
 const MAX_CACHED_COVERAGE_PER_ZOOM = 64;
 const CLUSTER_REFRESH_DEBOUNCE_MS = 300;
+
+function escapeHtml(value: unknown) {
+  const text = document.createElement("span");
+  text.textContent = String(value);
+  return text.innerHTML;
+}
 
 type MapProps = {
   className?: string;
@@ -74,7 +81,6 @@ export default function MapView({
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
   >(undefined);
-  const [currentPosition, setCurrentPosition] = useState({ lng: 0, lat: 0 });
   const [locating, setLocating] = useState(false);
   const focusLatitude = focusLocation?.latitude;
   const focusLongitude = focusLocation?.longitude;
@@ -111,13 +117,12 @@ export default function MapView({
   const zoom = useMemo(() => 5, []);
   maptilersdk.config.apiKey = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";
 
-  const updatePosition = (lng: number, lat: number) => {
+  const updatePosition = useMapCallback((lng: number, lat: number) => {
     if (!enableCenterMarker) {
       return;
     }
     markerRef.current?.setLngLat([lng, lat]);
-    setCurrentPosition({ lng, lat });
-  };
+  });
 
   const makeClustersUrl = (bbox: string, zoomLevel: number) => {
     const normalizedZoom = Math.max(0, Math.floor(zoomLevel));
@@ -135,7 +140,7 @@ export default function MapView({
     return `${apiBase}/lost-pets/clusters/tile/${normalizedZoom}/${x}/${y}${bufferParam}`;
   };
 
-  const refreshClusters = async (zoomLevel?: number) => {
+  const refreshClusters = useMapCallback(async (zoomLevel?: number) => {
     if (!map.current) {
       return;
     }
@@ -231,9 +236,9 @@ export default function MapView({
         inFlightRequestKeyRef.current = null;
       }
     }
-  };
+  });
 
-  const triggerReverseGeocode = (lng: number, lat: number) => {
+  const triggerReverseGeocode = useMapCallback((lng: number, lat: number) => {
     if (!onLocationChange || !maptilersdk.config.apiKey) {
       return;
     }
@@ -304,7 +309,7 @@ export default function MapView({
         }
       }
     }, 350);
-  };
+  });
 
   useEffect(() => {
     if (map.current) return; // stops map from intializing more than once
@@ -349,9 +354,13 @@ export default function MapView({
         map.current.remove();
         map.current = null;
         focusMarkerRef.current = null;
+        markerRef.current = null;
+        userMarkerRef.current = null;
+        sourcesReadyRef.current = false;
+        clusterRequestIdRef.current += 1;
       }
     };
-  }, [intialPosRef?.current?.lang, intialPosRef?.current?.lat]);
+  }, [enableCenterMarker, updatePosition, zoom]);
 
   useEffect(() => {
     if (
@@ -388,7 +397,72 @@ export default function MapView({
     }
 
     map.current.easeTo({ center: coordinates, zoom: 14, duration: 700 });
-  }, [focusLatitude, focusLongitude]);
+  }, [focusLatitude, focusLongitude, enableCenterMarker]);
+
+  const handlePetClick = useMapCallback(
+    (event: maptilersdk.MapLayerMouseEvent) => {
+      if (!map.current || !event.features?.length) {
+        return;
+      }
+      const feature = event.features[0];
+      if (!feature || feature.geometry.type !== "Point") {
+        return;
+      }
+      const { id, name, type } = feature.properties ?? {};
+      const coords = (feature.geometry as Point).coordinates as [
+        number,
+        number,
+      ];
+      const petId =
+        typeof id === "number"
+          ? id
+          : typeof id === "string"
+            ? Number.parseInt(id, 10)
+            : NaN;
+      const listingHref =
+        listingHrefBase && Number.isFinite(petId)
+          ? `${listingHrefBase}/${petId}`
+          : null;
+      const avatar =
+        type === "cat"
+          ? "🐱"
+          : type === "dog"
+            ? "🐶"
+            : type === "bird"
+              ? "🐦"
+              : "🐾";
+
+      const html = `
+      <div style="min-width:220px;border-radius:16px;border:1px solid #f1e5d3;background:#fffaf5;padding:12px 14px;font-family:inherit;box-shadow:0 18px 36px -24px rgba(15,23,42,0.4);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:999px;background:#fde68a;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 8px 18px -10px rgba(15,23,42,0.35);border:1px solid #f59e0b;">
+            ${avatar}
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:15px;color:#0f172a;">
+              ${escapeHtml(name ?? "Lost pet")}
+            </div>
+            <div style="font-size:11px;color:#8a7a63;text-transform:uppercase;letter-spacing:0.08em;">
+              ${escapeHtml(type ?? "unknown")}
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+          ${
+            listingHref
+              ? `<a href="${listingHref}" style="display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f172a;background:#fde68a;border-radius:999px;padding:8px 12px;border:1px solid #f59e0b;letter-spacing:0.06em;text-transform:uppercase;text-decoration:none;">${escapeHtml(openListingLabel)}</a>`
+              : `<span style="font-size:11px;color:#7c6f56;background:#fef3c7;border-radius:999px;padding:4px 8px;border:1px solid #f7e2a7;letter-spacing:0.06em;text-transform:uppercase;">details unavailable</span>`
+          }
+        </div>
+      </div>
+    `;
+
+      new maptilersdk.Popup({ closeButton: true, closeOnClick: true })
+        .setLngLat(coords)
+        .setHTML(html)
+        .addTo(map.current);
+    },
+  );
 
   useEffect(() => {
     if (!map.current) {
@@ -693,69 +767,6 @@ export default function MapView({
         });
       });
 
-      const handlePetClick = (event: maptilersdk.MapLayerMouseEvent) => {
-        if (!map.current || !event.features?.length) {
-          return;
-        }
-        const feature = event.features[0];
-        if (!feature || feature.geometry.type !== "Point") {
-          return;
-        }
-        const { id, name, type } = feature.properties ?? {};
-        const coords = (feature.geometry as Point).coordinates as [
-          number,
-          number,
-        ];
-        const petId =
-          typeof id === "number"
-            ? id
-            : typeof id === "string"
-              ? Number.parseInt(id, 10)
-              : NaN;
-        const listingHref =
-          listingHrefBase && Number.isFinite(petId)
-            ? `${listingHrefBase}/${petId}`
-            : null;
-        const avatar =
-          type === "cat"
-            ? "🐱"
-            : type === "dog"
-              ? "🐶"
-              : type === "bird"
-                ? "🐦"
-                : "🐾";
-
-        const html = `
-          <div style="min-width:220px;border-radius:16px;border:1px solid #f1e5d3;background:#fffaf5;padding:12px 14px;font-family:inherit;box-shadow:0 18px 36px -24px rgba(15,23,42,0.4);">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div style="width:40px;height:40px;border-radius:999px;background:#fde68a;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 8px 18px -10px rgba(15,23,42,0.35);border:1px solid #f59e0b;">
-                ${avatar}
-              </div>
-              <div>
-                <div style="font-weight:700;font-size:15px;color:#0f172a;">
-                  ${name ?? "Lost pet"}
-                </div>
-                <div style="font-size:11px;color:#8a7a63;text-transform:uppercase;letter-spacing:0.08em;">
-                  ${type ?? "unknown"}
-                </div>
-              </div>
-            </div>
-            <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
-              ${
-                listingHref
-                  ? `<a href="${listingHref}" style="display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f172a;background:#fde68a;border-radius:999px;padding:8px 12px;border:1px solid #f59e0b;letter-spacing:0.06em;text-transform:uppercase;text-decoration:none;">${openListingLabel}</a>`
-                  : `<span style="font-size:11px;color:#7c6f56;background:#fef3c7;border-radius:999px;padding:4px 8px;border:1px solid #f7e2a7;letter-spacing:0.06em;text-transform:uppercase;">details unavailable</span>`
-              }
-            </div>
-          </div>
-        `;
-
-        new maptilersdk.Popup({ closeButton: true, closeOnClick: true })
-          .setLngLat(coords)
-          .setHTML(html)
-          .addTo(map.current);
-      };
-
       map.current.on("click", "unclustered-point", handlePetClick);
       map.current.on("click", "unclustered-avatar", handlePetClick);
       map.current.on("click", "unclustered-label", handlePetClick);
@@ -850,9 +861,14 @@ export default function MapView({
         clearInterval(ringIntervalRef.current);
       }
     };
-  }, []);
+  }, [
+    enableCenterMarker,
+    handlePetClick,
+    refreshClusters,
+    triggerReverseGeocode,
+  ]);
 
-  const handleLocate = (manual = false) => {
+  const handleLocate = useMapCallback((manual = false) => {
     if (!map.current || !navigator.geolocation) {
       return;
     }
@@ -893,7 +909,7 @@ export default function MapView({
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
-  };
+  });
 
   useEffect(() => {
     if (!map.current) {
@@ -934,28 +950,28 @@ export default function MapView({
         refreshTimeoutRef.current = null;
       }
     };
-  }, []);
+  }, [enableCenterMarker, refreshClusters, triggerReverseGeocode]);
 
   useEffect(() => {
     if (typeof locateRequestId !== "number" || locateRequestId === 0) {
       return;
     }
     handleLocate(false);
-  }, [locateRequestId]);
+  }, [locateRequestId, handleLocate]);
 
   useEffect(() => {
     if (typeof manualLocateRequestId !== "number") {
       return;
     }
     handleLocate(true);
-  }, [manualLocateRequestId]);
+  }, [manualLocateRequestId, handleLocate]);
 
   useEffect(() => {
     if (typeof clustersRequestId !== "number" || clustersRequestId === 0) {
       return;
     }
     void refreshClusters();
-  }, [clustersRequestId]);
+  }, [clustersRequestId, refreshClusters]);
 
   return (
     <div className={`relative h-full w-full ${className}`}>

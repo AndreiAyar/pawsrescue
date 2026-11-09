@@ -1,11 +1,8 @@
-//@ts-nocheck
 import Supercluster from 'supercluster';
 import { ClusteringResult, PetFeature } from './types';
 
 const MOCK_COUNT = 200000;
-const DEFAULT_BBOX: [number, number, number, number] = [
-  20.0, 43.0, 30.0, 48.5,
-];
+const DEFAULT_BBOX: [number, number, number, number] = [20.0, 43.0, 30.0, 48.5];
 const DEFAULT_SEED = 1337;
 
 let mockCluster: Supercluster<PetFeature['properties']> | null = null;
@@ -42,7 +39,7 @@ const buildMockCluster = () => {
     };
   });
 
-  const cluster = new Supercluster({
+  const cluster = new Supercluster<PetFeature['properties']>({
     radius: 60,
     maxZoom: 18,
   });
@@ -58,7 +55,8 @@ export const getMockClusters = (
     mockCluster = buildMockCluster();
   }
 
-  const clusters = mockCluster.getClusters(bbox, zoom);
+  const cluster = mockCluster;
+  const clusters = cluster.getClusters(bbox, zoom);
   const features = clusters.map((feature) => {
     const properties = feature.properties as
       | {
@@ -71,7 +69,7 @@ export const getMockClusters = (
         ...feature,
         properties: {
           ...feature.properties,
-          expansion_zoom: mockCluster.getClusterExpansionZoom(
+          expansion_zoom: cluster.getClusterExpansionZoom(
             properties.cluster_id,
           ),
         },

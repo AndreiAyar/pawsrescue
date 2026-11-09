@@ -633,7 +633,7 @@ export class LostPetsService {
     }>;
 
     try {
-      rows = (await this.em.getConnection().execute(
+      rows = await this.em.getConnection().execute<typeof rows>(
         `
           select
             "id",
@@ -650,7 +650,7 @@ export class LostPetsService {
           limit 10
         `,
         params,
-      )) as typeof rows;
+      );
     } catch (error) {
       throw new InternalServerErrorException(
         `Match query failed: ${

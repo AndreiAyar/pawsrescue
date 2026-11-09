@@ -25,6 +25,11 @@ export default tseslint.config(
     },
   },
   {
+    // MikroORM migration methods return promises even when they only enqueue SQL.
+    files: ['src/migrations/*.ts'],
+    rules: { '@typescript-eslint/require-await': 'off' },
+  },
+  {
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
