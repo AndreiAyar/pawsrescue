@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import MapView from "../../components/Map/Map";
 
 type MapClientProps = {
+  lang: string;
+  openListingLabel: string;
   mapHeightClassName?: string;
   locationLabel?: string;
   locationPlaceholder?: string;
@@ -16,6 +18,8 @@ type MapClientProps = {
 };
 
 export default function MapClient({
+  lang,
+  openListingLabel,
   mapHeightClassName = "h-[480px] sm:h-[600px]",
   locationLabel = "Location",
   locationPlaceholder = "Move the map to see the street and city.",
@@ -27,7 +31,6 @@ export default function MapClient({
   showLocateButton = true,
 }: MapClientProps) {
   const useTileClusters = true;
-  console.log('aa',process.env.NEXT_PUBLIC_CLUSTER_MODE)
   const [location, setLocation] = useState<string>("");
   const [permissionState, setPermissionState] = useState<
     "granted" | "denied" | "prompt" | "unknown"
@@ -56,10 +59,7 @@ export default function MapClient({
             return;
           }
 
-          const nextState = status.state as
-            | "granted"
-            | "denied"
-            | "prompt";
+          const nextState = status.state as "granted" | "denied" | "prompt";
           setPermissionState(nextState);
           if (nextState !== "denied") {
             setLocateRequestId((prev) => prev + 1);
@@ -68,10 +68,7 @@ export default function MapClient({
           }
 
           status.onchange = () => {
-            const updated = status.state as
-              | "granted"
-              | "denied"
-              | "prompt";
+            const updated = status.state as "granted" | "denied" | "prompt";
             if (isMounted) {
               setPermissionState(updated);
               if (updated !== "denied") {
@@ -117,6 +114,8 @@ export default function MapClient({
     <div className="space-y-3">
       <div className={mapHeightClassName}>
         <MapView
+          listingHrefBase={`/${lang}/pets`}
+          openListingLabel={openListingLabel}
           locateLabel={locateLabel}
           locatingLabel={locatingLabel}
           locateRequestId={locateRequestId}

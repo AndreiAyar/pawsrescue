@@ -5,8 +5,9 @@ import { Button } from "@repo/ui/button";
 import MapClient from "./MapClient";
 
 type SearchMapPanelProps = {
+  lang: string;
   title: string;
-  badge: string;
+  openListingLabel: string;
   locateLabel: string;
   locatingLabel: string;
   locationLabel: string;
@@ -16,8 +17,9 @@ type SearchMapPanelProps = {
 };
 
 export default function SearchMapPanel({
+  lang,
   title,
-  badge,
+  openListingLabel,
   locateLabel,
   locatingLabel,
   locationLabel,
@@ -28,9 +30,7 @@ export default function SearchMapPanel({
   const [manualLocateRequestId, setManualLocateRequestId] = useState(0);
 
   return (
-    <div
-      className="search-map-panel relative overflow-hidden rounded-2xl border border-slate-200 bg-white/80 shadow-[0_22px_60px_-38px_rgba(31,41,55,0.45)]"
-    >
+    <div className="search-map-panel relative overflow-hidden rounded-2xl border border-slate-200 bg-white/80 shadow-[0_22px_60px_-38px_rgba(31,41,55,0.45)]">
       <style jsx global>{`
         .search-map-panel .maptiler-geocoding-control input,
         .search-map-panel .maptiler-geocoding-control .maptiler-geocoding-input,
@@ -53,13 +53,12 @@ export default function SearchMapPanel({
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             {locateLabel}
           </Button>
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] text-emerald-800">
-            {badge}
-          </span>
         </div>
       </div>
       <div className="px-1.5 py-3 sm:p-4">
         <MapClient
+          lang={lang}
+          openListingLabel={openListingLabel}
           mapHeightClassName="h-[420px] sm:h-[600px]"
           locationLabel={locationLabel}
           locationPlaceholder={locationPlaceholder}

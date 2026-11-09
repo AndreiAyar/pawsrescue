@@ -6,61 +6,43 @@
       "scan": "Scan"
     },
     "hero": {
-      "kicker": "Pet friendly map",
       "title": "Find lost pets faster.",
-      "body": "Report a lost pet, browse the city map, and scan photos to get quick matches."
+      "body": "Report a lost pet or search nearby listings."
     },
     "cta": {
       "report": "Report lost pet",
       "scan": "Scan found pet",
       "browse": "See live map"
     },
-    "stats": {
-      "active": "Active reports",
-      "matches": "Matches this month",
-      "cities": "Cities covered"
-    },
     "map": {
-      "label": "Live map of lost pets",
-      "badge": "Search pets near you"
+      "badge": "View listings",
+      "openListing": "Open listing"
+    },
+    "stats": {
+      "reports": "Active listings",
+      "cities": "Cities"
     },
     "recent": {
       "title": "Recent reports",
-      "viewAll": "View all"
+      "viewAll": "View all",
+      "empty": "There are no reports yet."
     },
     "how": {
       "title": "How it works",
       "oneTitle": "Report",
-      "oneBody": "Add name, description, photos and location. Get an email link to edit.",
-      "twoTitle": "Scan",
-      "twoBody": "Upload photos and get nearby matches.",
-      "threeTitle": "Reconnect",
-      "threeBody": "Contact the owner and receive new match alerts."
-    },
-    "recentItems": [
-      {
-        "name": "Mimi",
-        "city": "Bucharest",
-        "type": "Cat",
-        "time": "2h"
-      },
-      {
-        "name": "Rex",
-        "city": "Cluj",
-        "type": "Dog",
-        "time": "5h"
-      },
-      {
-        "name": "Cleo",
-        "city": "Iasi",
-        "type": "Cat",
-        "time": "1d"
-      }
-    ]
+      "oneBody": "Add photos, details and the last known location.",
+      "twoTitle": "Search",
+      "twoBody": "Check the map and nearby listings.",
+      "threeTitle": "Scan",
+      "threeBody": "Upload photos of a found pet to look for matches."
+    }
   },
   "Common": {
     "comingSoon": "Coming soon",
     "backHome": "Back home",
+    "apiUnavailable": "The service is not responding right now. Please try again in a few seconds.",
+    "listingNotFound": "Listing not found.",
+    "lastSeenLocation": "Last seen location",
     "titles": {
       "report": "Report lost pet",
       "scan": "Scan found pet",
@@ -71,9 +53,7 @@
     }
   },
   "Search": {
-    "eyebrow": "Live tracking",
     "subhead": "Browse recent reports, filter by area, and tap a pin to see quick details.",
-    "live": "Live",
     "filters": {
       "label": "Filters",
       "city": "City",
@@ -84,7 +64,7 @@
     },
     "map": {
       "title": "Map",
-      "badge": "Clusters"
+      "openListing": "Open listing"
     },
     "location": {
       "label": "Location",
@@ -94,26 +74,86 @@
       "denied": "Location is turned off.",
       "hint": "Enable it in Chrome to use GPS."
     },
-    "legend": {
-      "title": "Cluster legend",
-      "small": "1–25 reports",
-      "medium": "25–100 reports",
-      "large": "100+ reports"
-    },
-    "alerts": {
-      "title": "Saved alerts",
-      "body": "Get email updates when a matching report appears nearby.",
-      "cta": "Create alert"
-    },
-    "detail": {
-      "title": "Quick details",
-      "body": "Select a pin to preview name, status, and contact options.",
-      "placeholder": "No report selected yet."
-    },
     "list": {
       "title": "Nearby reports",
       "badge": "Updated now",
-      "more": "Load more"
+      "more": "Load more",
+      "unavailable": "The listing feed could not be loaded right now."
     }
+  },
+  "Report": {
+    "title": "Report a lost pet",
+    "intro": "Add the details and the place where the pet was last seen.",
+    "successTitle": "Listing created",
+    "successBody": "Your listing was saved with ID",
+    "submit": "Create listing",
+    "submitting": "Saving...",
+    "ui": {
+      "mapEyebrow": "Live location",
+      "mapTitle": "Drop the pin where the pet was last seen",
+      "mapBadge": "move map to update",
+      "quickStatus": "Quick status",
+      "lastSeenArea": "Last seen area",
+      "cityAuto": "Auto from map",
+      "photosSelected": "selected",
+      "draftHint": "Add the core details, drop the map pin, then publish in one step.",
+      "flowIdentity": "1. Identity",
+      "flowContact": "2. Contact",
+      "flowPhotos": "3. Photos"
+    },
+    "fields": {
+      "name": "Pet name",
+      "type": "Pet type",
+      "email": "Email",
+      "phone": "Phone",
+      "city": "City",
+      "location": "Location note",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "description": "Description",
+      "photos": "Photos"
+    },
+    "placeholders": {
+      "name": "Mimi",
+      "email": "owner@example.com",
+      "phone": "+40...",
+      "city": "Bucharest",
+      "location": "Roman Square, near the park",
+      "latitude": "44.4268",
+      "longitude": "26.1025",
+      "description": "Grey cat, scared, wearing a red collar.",
+      "petType": "Choose type",
+      "photos": "Up to 4 photos."
+    },
+    "types": {
+      "dog": "Dog",
+      "cat": "Cat",
+      "bird": "Bird",
+      "other": "Other"
+    }
+  },
+  "Scan": {
+    "title": "Scan a found pet",
+    "intro": "Upload photos of the found pet to search for similar listings.",
+    "cityLabel": "Optional city",
+    "cityPlaceholder": "Bucharest",
+    "photosLabel": "Photos of the found pet",
+    "photosHint": "Up to 4 photos.",
+    "submit": "Find matches",
+    "submitting": "Searching...",
+    "empty": "No results yet. Upload photos and start a search.",
+    "resultsTitle": "Matches",
+    "openListing": "Open listing",
+    "matchPercent": "match",
+    "demoBadge": "DEMO",
+    "demoTitle": "Try the search now",
+    "demoBody": "Click the preloaded photo. We will add it to the form automatically so you can see the lost cat match.",
+    "demoAction": "Click the preloaded photo",
+    "demoSelected": "The demo photo is loaded and ready to search.",
+    "demoSubmit": "Search demo",
+    "demoAlt": "Silver cat in the demo photo",
+    "locationTitle": "Cat location on the map",
+    "showOnMap": "Show on map",
+    "selectedOnMap": "On map"
   }
 }

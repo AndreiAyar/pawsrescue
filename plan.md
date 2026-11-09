@@ -1,14 +1,13 @@
 # PawsRescue Plan
 
 ## Summary
-Romania-first app to report lost pets and help people match pets they see on the street.
-Users can search manually on a map or upload photos to find AI-based matches.
+Build a simple local MVP on `dev` with four services:
+- `web`
+- `api`
+- `db`
+- `ai`
 
-## Core User Flows
-1) Report lost pet (name, contact, description, photos, location).
-2) Browse map of lost pets with filters (city, type, color, status).
-3) Upload 1-4 photos to find similar pets via embeddings.
-4) Contact owner and update or close a listing via a secure email link.
+Keep the implementation basic, demo-friendly, and easy to resume in future chats.
 
 ## MVP Scope
 - Map with clustered lost pet pins and filters.
@@ -19,82 +18,91 @@ Users can search manually on a map or upload photos to find AI-based matches.
 - Verification basics (email link, optional phone later).
 - Multi file upload
 
-## UX Flow (Draft)
-Report Lost Pet
-1) Start report from home.
-2) Fill pet info + contact + description + photos (1-4).
-3) Pick location on map (or search by address).
-4) Review and submit.
-5) Email link to verify and manage the listing.
+## Working Rules
+- Work slice by slice, not all-at-once.
+- After each meaningful slice:
+  - check local behavior
+  - verify API/UI path
+  - use Browser when available
+  - summarize what works and what is still missing
+- Keep mock mode available for demos through `USE_MOCK_DATA=true|false`.
 
-Find a Pet (Scan)
-1) Upload 1-3 photos of the pet you saw.
-2) Provide location (city or current area).
-3) See ranked matches in the city, then expand if needed.
-4) Open detail page and contact the owner.
+## Current Slice Status
 
-Manual Browse
-1) Explore map/list with filters (city, type, color, status).
-2) Open listing detail.
-3) Contact owner.
+### Slice 0: Local skeleton
+Status: Done
+- Docker Compose skeleton exists.
+- Service-level env examples exist.
+- AI service shell exists.
+- `apps/ai` is now also wired into the Turborepo dev flow for local development.
 
-## Page Map (Draft)
-- /[lang] (home + map preview, CTAs: report lost pet, scan found pet, browse map)
-- /[lang]/report (lost pet form + location picker + photo upload)
-- /[lang]/scan (upload photos + location + match results)
-- /[lang]/search (map + list + filters)
-- /[lang]/pets/[id] (lost pet detail + contact)
-- /[lang]/owner/[token] (edit/close listing via email link)
-- /[lang]/verify (email verification landing)
+### Slice 1: Real lost-pet create flow
+Status: Done
+- `POST /lost-pets`
+- multipart upload from `report`
+- local photo storage
+- listing persistence
 
-## Confirmed Decisions (2026-01-27)
-- Routes: use /report and /pets/[id].
-- Language: bilingual (RO/EN) from the start, via /ro and /en prefixes.
-- Filters: city, type, color, status, radius.
-- Scan flow: location required; if geolocation denied, require manual city input, otherwise allow global search fallback.
-- Home map: static local image + CSS overlay "fake clusters"; interactive map only on /search.
+### Slice 2: Real read flow
+Status: Mostly done
+- `GET /lost-pets`
+- `GET /lost-pets/:id`
+- `pet details` page connected
+- `search` list section connected
+- embedding metadata is now surfaced in pet details
+- local real-mode env has been wired for `api` and `web`
+- direct real-mode API verification now passes
+- still needs one browser/UI pass against the live local `web` process
 
-## Design Notes (Future)
-- Add a warmer pastel palette and playful UI accents once base layout is stable.
+### Slice 3: Mock toggle for demo
+Status: Partially done
+- mock clusters
+- mock matches
+- mock list/detail support added in service logic
+- default behavior now points to real mode unless `USE_MOCK_DATA=true` is explicitly set
+- still needs one final consistency pass across all read endpoints
 
-## AI Matching (Draft)
-- On create: generate embeddings per photo (1-4). Decide between:
-  - Per-photo embeddings stored, or
-  - Aggregate embedding (median/mean).
-- Store embeddings in Postgres (pgvector).
-- On query: embed uploaded photo(s), search within city or radius.
-- Return ranked matches + distance + basic info.
-- If local matches are weak, expand to nearby cities.
+### Slice 4: AI microservice
+Status: Mostly done
+- `/embed` exists
+- local image-path contract exists
+- primary embedder now adapts the DINO/timm path from `pawsmatch`
+- fallback embedder remains available so the service still works without model runtime success
+- `apps/ai` is now exposed as a Turborepo workspace task for local dev ergonomics
+- the AI service now uses a pawsmatch-inspired `timm` ensemble (`vit_base_patch16_224_dino` plus `vit_base_patch8_224_dino`) with a deterministic fallback
+- `transformers` is now installed locally in `apps/ai/.venv`
+- added `AI_OFFLINE_MODEL_LOAD=true|false` for fast offline verification
+- direct live verification now passes against a temporary local stack
 
-## Architecture (Draft)
-- Web: Next.js app router, MapTiler map, filters, upload UI.
-- API: NestJS + MikroORM + Postgres.
-- Vector search: pgvector in Postgres.
-- Async processing: RabbitMQ queue for embedding + search.
-- Model service: external service for embeddings (candidate: Meta SAM 3).
+### Slice 5: Vector search
+Status: Mostly done
+- pgvector migration exists
+- embedding save path exists
+- `POST /lost-pets/match` exists
+- embedding dimension upgraded to fit the richer AI embeddings
+- query-time embedding metadata is now surfaced in the scan UI
+- Supabase schema migrations for embedding columns have now been applied
+- direct runtime verification now passes
+- still needs quality tuning and browser/UI walkthrough
 
-## Data Model (LostPetEntity)
-Required: name, type, email, latitude, longitude.
-Optional: description, phone, images, raw and structured address fields, maptiler data.
+### Slice 6: Final polish
+Status: Not started
+- full local walkthrough
+- cleanup of rough edges
+- remove obvious demo/runtime friction
 
-## API Endpoints (Initial)
-- POST /lost-pets
-- GET /lost-pets/:id
-- GET /lost-pets/clusters?bbox=&zoom=
-- POST /lost-pets/match (photos, location, filters)
-- POST /lost-pets/:id/close
-- POST /lost-pets/:id/update (via secure token)
-
-## Decisions To Make
-- Embedding storage strategy (per-photo vs aggregate).
-- Search radius rules (city-only vs km radius + expansion).
-- Photo storage (local, S3-compatible, or DB references).
-- Identity and edit flow (email token format and expiry).
-- Model service choice and hosting (SAM 3 or alternative).
+## Confirmed Technical Decisions
+- DB can be local Postgres in Docker or the configured Supabase Postgres for local development.
+- AI lives in `apps/ai`, but must reuse and adapt good parts from `[/Users/ayar/Personal Dev/pawsmatch/](/Users/ayar/Personal%20Dev/pawsmatch/)`.
+- Images are uploaded by the user, stored locally for MVP, and shared with AI by file path through a shared volume.
+- No queues, no auth, no email flow, no object storage in v1.
+- Keep the code straightforward and easy to inspect.
 
 ## Immediate Next Steps
-- Define MVP UX flow and pages.
-- Specify filters and search parameters.
-- Design match response shape.
-- Decide embedding strategy and queue workflow.
-- Update API to accept real lost pet creation + photos.
+- Continue from the current branch: `dev`.
+- Do one final browser walkthrough against the already-running local web app:
+  - `report -> search -> detail -> scan -> match`
+- Decide whether `AI_OFFLINE_MODEL_LOAD` should remain opt-in only or be set in any local env for offline development.
+- After that, decide whether to stop at MVP-complete or do one small follow-up slice:
+  - ranking quality tuning
+  - repo cleanup for unrelated type/test failures
