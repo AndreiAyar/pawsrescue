@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { ImageLightbox } from "@repo/ui/imageLightbox";
+import PetLocationMap from "./PetLocationMap";
 
 type PetDetail = {
   id: number;
@@ -139,13 +140,32 @@ export default async function PetDetailPage({
             </div>
           </section>
 
-          <aside className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Description
-            </p>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              {pet.description ?? "No description yet."}
-            </p>
+          <aside className="space-y-6">
+            <section className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)] sm:p-6">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t("lastSeenLocation")}
+              </h2>
+              <p className="mb-4 mt-2 text-sm font-semibold text-slate-900">
+                {pet.name}
+                {pet.city ? ` · ${pet.city}` : ""}
+              </p>
+              <PetLocationMap
+                latitude={pet.latitude}
+                longitude={pet.longitude}
+                name={pet.name}
+              />
+              {pet.rawLocation ? (
+                <p className="mt-3 text-sm text-slate-600">{pet.rawLocation}</p>
+              ) : null}
+            </section>
+            <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Description
+              </p>
+              <p className="mt-3 text-sm leading-6 text-slate-700">
+                {pet.description ?? "No description yet."}
+              </p>
+            </section>
           </aside>
         </div>
       </div>

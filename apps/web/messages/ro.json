@@ -42,6 +42,7 @@
     "backHome": "Inapoi acasa",
     "apiUnavailable": "Serviciul nu raspunde acum. Poti reincerca in cateva secunde.",
     "listingNotFound": "Anuntul nu a fost gasit.",
+    "lastSeenLocation": "Ultima locatie cunoscuta",
     "titles": {
       "report": "Raportare animal pierdut",
       "scan": "Scaneaza animal gasit",
