@@ -75,3 +75,11 @@ Thumbs.db
 .codex/
 .claude/
 .gemini/
+
+# Runtime uploads stay out of Git; only reviewed demo photos are versioned.
+/apps/api/uploads/*
+!/apps/api/uploads/demo-unsplash-*.jpg
+!/apps/api/uploads/1781198858082-136854608.png
+!/apps/api/uploads/1781199258750-435084240.webp
+/uploads/*
+!/uploads/.gitkeep
