@@ -6,9 +6,10 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /service
 
 COPY apps/ai/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir torch==2.15.0 torchvision==0.29.2 --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r requirements.txt
 
-COPY apps/ai ./app
+COPY apps/ai/main.py ./app/main.py
 
 WORKDIR /service/app
 

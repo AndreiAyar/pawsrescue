@@ -7,6 +7,9 @@ import {
 } from '@mikro-orm/core';
 import { LostPetsRepository } from './lost-pets.repository';
 
+export type EmbeddingStatus =
+  'none' | 'pending' | 'processing' | 'ready' | 'failed';
+
 @Entity({
   tableName: 'lost_pets',
   repository: () => LostPetsRepository,
@@ -108,6 +111,9 @@ export class LostPetEntity {
 
   @Property({ type: 'text', nullable: true })
   embeddingWarning?: string;
+
+  @Property({ default: 'none', length: 20 })
+  embeddingStatus: EmbeddingStatus = 'none';
 
   @Property({ onCreate: () => new Date() })
   createdAt!: Date;

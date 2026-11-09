@@ -29,6 +29,10 @@ describe('AppController (e2e)', () => {
       .expect('PawsRescue API');
   });
 
+  it('/ready fails when no database is configured', () => {
+    return request(app.getHttpServer()).get('/ready').expect(503);
+  });
+
   it('/health (GET)', () => {
     return request(app.getHttpServer())
       .get('/health')

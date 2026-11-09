@@ -3,9 +3,11 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
-import { LostPetEntity } from './lost-pets.entity';
+import { LostPetEntity, EmbeddingStatus } from './lost-pets.entity';
+import { EmbeddingQueueService } from '../embeddings/embedding-queue.service';
 import { EntityRepository } from '@mikro-orm/core';
 import { LostPetDTO } from './dtos/lost-pet.dto';
 import { EntityManager } from '@mikro-orm/postgresql';
@@ -47,6 +49,7 @@ type PetResponse = {
   latitude: number;
   longitude: number;
   imageUrls: string[];
+  embeddingStatus: EmbeddingStatus;
   embeddingInfo: {
     model: string;
     fallbackUsed: boolean;
@@ -72,6 +75,7 @@ type NormalizablePet = {
   embeddingModel?: string | null;
   embeddingFallbackUsed?: boolean | null;
   embeddingWarning?: string | null;
+  embeddingStatus?: EmbeddingStatus;
   createdAt: Date;
   updatedAt: Date | null;
 };
@@ -103,6 +107,7 @@ export class LostPetsService {
     @InjectRepository(LostPetEntity)
     private readonly lostPetsRepository: EntityRepository<LostPetEntity>,
     private readonly em: EntityManager,
+    private readonly embeddings: EmbeddingQueueService,
   ) {}
 
   private normalizePet(pet: NormalizablePet): PetResponse {
@@ -118,6 +123,8 @@ export class LostPetsService {
       latitude: Number(pet.latitude),
       longitude: Number(pet.longitude),
       imageUrls: pet.imageUrls ?? [],
+      embeddingStatus:
+        pet.embeddingStatus ?? (pet.embedding ? 'ready' : 'none'),
       embeddingInfo: pet.embedding
         ? {
             model: pet.embeddingModel ?? 'unknown',
@@ -236,7 +243,9 @@ export class LostPetsService {
           "embedding" = ?::vector,
           "embedding_model" = ?,
           "embedding_fallback_used" = ?,
-          "embedding_warning" = ?
+          "embedding_warning" = ?,
+          "embedding_status" = 'ready',
+          "updated_at" = now()
         where "id" = ?
       `,
       [
@@ -296,13 +305,28 @@ export class LostPetsService {
         }
       }
 
+      if (response.status === 400 || response.status === 422) {
+        throw new BadRequestException(
+          'Use a valid JPG, PNG, GIF or WebP photo',
+        );
+      }
+      if (response.status === 503) {
+        throw new ServiceUnavailableException(
+          'Photo search is temporarily unavailable',
+        );
+      }
       if (!response.ok || !Array.isArray(data?.embedding)) {
         throw new InternalServerErrorException(
           data?.detail || 'AI service failed to generate an embedding',
         );
       }
 
-      if (data.embedding.length !== VECTOR_DIMENSIONS) {
+      if (
+        data.embedding.length !== VECTOR_DIMENSIONS ||
+        data.embedding.some(
+          (value) => typeof value !== 'number' || !Number.isFinite(value),
+        )
+      ) {
         throw new InternalServerErrorException(
           'AI embedding dimensions are invalid',
         );
@@ -315,14 +339,19 @@ export class LostPetsService {
         warning: data.warning?.trim() || null,
       } satisfies EmbeddingResult;
     } catch (error) {
-      if (error instanceof InternalServerErrorException) {
+      if (
+        error instanceof InternalServerErrorException ||
+        error instanceof ServiceUnavailableException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
 
-      throw new InternalServerErrorException(
-        `AI embedding request failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+      this.logger.warn(
+        `AI embedding request failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw new ServiceUnavailableException(
+        'Photo search is temporarily unavailable',
       );
     }
   }
@@ -366,6 +395,49 @@ export class LostPetsService {
     return result;
   }
 
+  async setEmbeddingStatus(id: number, status: EmbeddingStatus) {
+    await this.em.getConnection().execute(
+      `update "lost_pets" set "embedding_status" = ?, "updated_at" = now()
+       where "id" = ? and "embedding_status" <> 'ready'`,
+      [status, id],
+    );
+  }
+
+  async processEmbedding(petId: number) {
+    const pet = await this.lostPetsRepository.findOne({ id: petId });
+    // Re-delivery and already rebuilt reports must not run inference again.
+    if (!pet || pet.embeddingStatus === 'ready') return { petId };
+    const imagePaths = (pet.imageUrls ?? []).map((url) =>
+      join(getUploadsDir(), basename(url)),
+    );
+    if (!imagePaths.length) {
+      await this.setEmbeddingStatus(petId, 'none');
+      return { petId };
+    }
+
+    await this.setEmbeddingStatus(petId, 'processing');
+    const result = await this.requestEmbedding(imagePaths);
+    if (!result || result.fallbackUsed) {
+      throw new ServiceUnavailableException('AI embedding is unavailable');
+    }
+    await this.saveEmbeddingForPet(petId, result);
+    return { petId };
+  }
+
+  async recoverPendingEmbeddings() {
+    const rows = await this.em.getConnection().execute<Array<{ id: number }>>(
+      `select "id" from "lost_pets"
+       where "embedding_status" in ('pending', 'processing')
+       order by "updated_at", "id" limit 100`,
+    );
+    for (const { id } of rows) {
+      const job = await this.embeddings.enqueue(id);
+      if ((await job.getState()) === 'failed') {
+        await this.setEmbeddingStatus(id, 'failed');
+      }
+    }
+  }
+
   private getMockMatches(city?: string): MatchResponse['matches'] {
     return this.getMockPets()
       .filter(
@@ -386,20 +458,51 @@ export class LostPetsService {
   }
 
   private validateCreateInput(pet: LostPetDTO) {
-    if (!pet.name?.trim()) {
-      throw new BadRequestException('Name is required');
+    const required = (value: unknown, label: string, max = 255) => {
+      if (typeof value !== 'string' || !value.trim() || value.length > max) {
+        throw new BadRequestException(
+          `${label} must be a non-empty string (up to ${max} characters)`,
+        );
+      }
+    };
+    required(pet.name, 'Name');
+    required(pet.email, 'Email');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pet.email.trim())) {
+      throw new BadRequestException('Enter a valid email address');
     }
-    if (!pet.email?.trim()) {
-      throw new BadRequestException('Email is required');
+    if (!['dog', 'cat', 'bird', 'other'].includes(pet.type)) {
+      throw new BadRequestException('Choose a valid animal type');
     }
-    if (!pet.type) {
-      throw new BadRequestException('Type is required');
+    for (const [label, value, max] of [
+      ['Latitude', pet.latitude, 90],
+      ['Longitude', pet.longitude, 180],
+    ] as const) {
+      if (
+        (typeof value !== 'string' && typeof value !== 'number') ||
+        String(value).trim() === '' ||
+        !Number.isFinite(Number(value)) ||
+        Math.abs(Number(value)) > max
+      ) {
+        throw new BadRequestException(
+          `${label} must be between -${max} and ${max}`,
+        );
+      }
     }
-    if (!Number.isFinite(Number(pet.latitude))) {
-      throw new BadRequestException('Latitude must be a valid number');
-    }
-    if (!Number.isFinite(Number(pet.longitude))) {
-      throw new BadRequestException('Longitude must be a valid number');
+    for (const [key, max] of [
+      ['phone', 255],
+      ['city', 255],
+      ['rawLocation', 255],
+      ['description', 1000],
+    ] as const) {
+      const value = pet[key];
+      if (
+        value !== undefined &&
+        (typeof value !== 'string' || value.length > max)
+      ) {
+        throw new BadRequestException(
+          `${key} must be a string of up to ${max} characters`,
+        );
+      }
     }
   }
 
@@ -419,6 +522,7 @@ export class LostPetsService {
       city: pet.city?.trim() || undefined,
       rawLocation: pet.rawLocation?.trim() || undefined,
       imageUrls: uploadedImageUrls,
+      embeddingStatus: photos.length > 0 ? 'pending' : 'none',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -426,21 +530,10 @@ export class LostPetsService {
 
     if (photos.length > 0) {
       try {
-        const embeddingResult = await this.requestEmbedding(
-          this.buildStoredImagePaths(photos),
-        );
-        if (embeddingResult) {
-          await this.saveEmbeddingForPet(createdPet.id, embeddingResult);
-          createdPet.embedding = this.buildVectorLiteral(
-            embeddingResult.embedding,
-          );
-          createdPet.embeddingModel = embeddingResult.model;
-          createdPet.embeddingFallbackUsed = embeddingResult.fallbackUsed;
-          createdPet.embeddingWarning = embeddingResult.warning ?? undefined;
-        }
+        await this.embeddings.enqueue(createdPet.id);
       } catch (error) {
         this.logger.error(
-          `Pet ${createdPet.id} was saved, but its embedding could not be generated`,
+          `Pet ${createdPet.id} is saved; its pending embedding will be queued by recovery`,
           error instanceof Error ? error.stack : String(error),
         );
       }
@@ -452,10 +545,30 @@ export class LostPetsService {
     bboxString: string,
     zoomString: string,
   ): Promise<ClusteringResult> {
-    const bbox = bboxString.split(',').map(Number);
+    if (
+      typeof bboxString !== 'string' ||
+      typeof zoomString !== 'string' ||
+      !zoomString.trim()
+    ) {
+      throw new BadRequestException('bbox and zoom are required');
+    }
+    const parts = bboxString.split(',');
+    const bbox = parts.map(Number);
     const zoom = Number(zoomString);
-
-    if (bbox.length !== 4 || bbox.some(isNaN)) {
+    if (!Number.isInteger(zoom) || zoom < 0 || zoom > 24) {
+      throw new BadRequestException('Invalid zoom level');
+    }
+    if (
+      bbox.length !== 4 ||
+      parts.some((value) => !value.trim()) ||
+      bbox.some((value) => !Number.isFinite(value)) ||
+      bbox[0] < -180 ||
+      bbox[2] > 180 ||
+      bbox[1] < -90 ||
+      bbox[3] > 90 ||
+      bbox[0] > bbox[2] ||
+      bbox[1] > bbox[3]
+    ) {
       throw new BadRequestException('Invalid bbox format');
     }
 
@@ -556,8 +669,8 @@ export class LostPetsService {
       throw new BadRequestException('Invalid tile coordinates');
     }
 
-    const bufferValue = buffer === undefined ? 1 : Number.parseInt(buffer, 10);
-    if (!Number.isFinite(bufferValue) || bufferValue < 0) {
+    const bufferValue = buffer === undefined ? 1 : Number(buffer);
+    if (!Number.isInteger(bufferValue) || bufferValue < 0 || bufferValue > 16) {
       throw new BadRequestException('Invalid tile buffer');
     }
 
@@ -595,6 +708,11 @@ export class LostPetsService {
   }
 
   async match(photos: UploadedPhoto[] = [], city?: string) {
+    if (city !== undefined && (typeof city !== 'string' || city.length > 255)) {
+      throw new BadRequestException(
+        'City must be a string of up to 255 characters',
+      );
+    }
     if (photos.length === 0) {
       throw new BadRequestException('At least one photo is required');
     }
@@ -610,6 +728,20 @@ export class LostPetsService {
       return this.buildMatchResponse('real', []);
     }
 
+    if (embeddingResult.fallbackUsed) {
+      throw new ServiceUnavailableException(
+        'Photo search is temporarily unavailable',
+      );
+    }
+    const configuredDistance = Number(
+      process.env.AI_MATCH_MAX_DISTANCE ?? '0.5',
+    );
+    const maxDistance =
+      Number.isFinite(configuredDistance) &&
+      configuredDistance >= 0 &&
+      configuredDistance <= 2
+        ? configuredDistance
+        : 0.5;
     const vectorLiteral = this.buildVectorLiteral(embeddingResult.embedding);
     const params: (string | number)[] = [vectorLiteral, embeddingResult.model];
     let whereClause = 'where "embedding" is not null and "embedding_model" = ?';
@@ -661,16 +793,22 @@ export class LostPetsService {
 
     return this.buildMatchResponse(
       'real',
-      rows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        type: row.type,
-        city: row.city,
-        imageUrl: row.imageUrls?.[0] ?? null,
-        latitude: Number(row.latitude),
-        longitude: Number(row.longitude),
-        score: Number(row.score),
-      })),
+      rows
+        .filter(
+          (row) =>
+            Number.isFinite(Number(row.score)) &&
+            Number(row.score) <= maxDistance,
+        )
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          city: row.city,
+          imageUrl: row.imageUrls?.[0] ?? null,
+          latitude: Number(row.latitude),
+          longitude: Number(row.longitude),
+          score: Number(row.score),
+        })),
       {
         model: embeddingResult.model,
         fallbackUsed: embeddingResult.fallbackUsed,

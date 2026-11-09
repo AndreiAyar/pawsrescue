@@ -10,6 +10,11 @@ export class AppController {
     return this.appService.getHello();
   }
 
+  @Get('ready')
+  getReadiness() {
+    return this.appService.getReadiness();
+  }
+
   @Get('health')
   getHealth() {
     return this.appService.getHealth();

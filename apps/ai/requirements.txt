@@ -1,8 +1,9 @@
-fastapi==0.116.1
-uvicorn==0.35.0
-python-dotenv==1.1.1
-numpy==2.3.2
-pillow==11.3.0
-torch==2.8.0
-torchvision==0.23.0
-transformers==4.56.0
+fastapi==0.162.2
+starlette==1.10.0
+uvicorn==0.54.0
+python-dotenv==1.2.4
+numpy==2.4.6
+pillow==13.0.0
+torch==2.15.0
+torchvision==0.29.2
+transformers==5.22.2

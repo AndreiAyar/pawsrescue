@@ -5,7 +5,8 @@ from typing import Any, List
 
 import numpy as np
 from fastapi import FastAPI, HTTPException
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+from threading import Lock
 from pydantic import BaseModel
 
 try:
@@ -31,22 +32,20 @@ DEFAULT_MODEL_NAME = os.getenv("AI_MODEL_NAME", "auto").strip() or "auto"
 OFFLINE_MODEL_LOAD = os.getenv("AI_OFFLINE_MODEL_LOAD", "false").strip().lower() == "true"
 TRANSFORMERS_MODEL_NAME = os.getenv(
     "AI_TRANSFORMERS_MODEL_NAME",
-    "facebook/dinov3-vitl16-pretrain-lvd1689m",
+    "facebook/dinov2-small",
 ).strip()
 CAT_DETECTION_THRESHOLD = float(os.getenv("AI_CAT_DETECTION_THRESHOLD", "0.65"))
 CAT_CROP_PADDING = float(os.getenv("AI_CAT_CROP_PADDING", "0.08"))
 CAT_CROP_WEIGHT = float(os.getenv("AI_CAT_CROP_WEIGHT", "0.8"))
 
-RGB_RESIZE = (12, 12)
-GRAY_RESIZE = (12, 12)
-HISTOGRAM_BINS = 8
-GRAYSCALE_HISTOGRAM_BINS = 16
-
-DINOV3_MODEL_ALIASES = {"auto", "best", "pawsmatch", "transformers", "dinov3"}
+MODEL_ALIASES = {"auto", "best", "pawsmatch", "transformers", "dinov3", "dinov2"}
 MODEL_FAMILY = "dinov2" if "dinov2" in TRANSFORMERS_MODEL_NAME else "dinov3"
 PIPELINE_MODEL_NAME = f"{MODEL_FAMILY}-cat-crop-v1:{TRANSFORMERS_MODEL_NAME}"
 
-app = FastAPI(title="PawsRescue AI Service", version="0.4.0")
+app = FastAPI(title="PawsRescue AI Service", version="0.5.0")
+_model_lock = Lock()
+_ready = False
+Image.MAX_IMAGE_PIXELS = 25_000_000
 
 if OFFLINE_MODEL_LOAD:
     os.environ["HF_HUB_OFFLINE"] = "1"
@@ -58,17 +57,15 @@ class EmbedRequest(BaseModel):
 
 def resolve_image_path(image_path: str) -> Path:
     candidate = Path(image_path)
-    if candidate.is_absolute():
-        return candidate
-
     upload_dir = os.getenv("UPLOAD_DIR", "").strip()
     if upload_dir:
-        upload_base = Path(upload_dir)
-        if not upload_base.is_absolute():
-            upload_base = (Path.cwd() / upload_base).resolve()
-        return upload_base / candidate.name
+        upload_base = Path(upload_dir).resolve()
+        resolved = candidate.resolve() if candidate.is_absolute() else (upload_base / candidate).resolve()
+        if not resolved.is_relative_to(upload_base):
+            raise HTTPException(status_code=400, detail="Photo must be inside the uploads directory")
+        return resolved
+    return candidate.resolve()
 
-    return (Path.cwd() / candidate).resolve()
 
 
 class TransformersImageEmbedder:
@@ -230,64 +227,6 @@ def normalize_embedding(values: np.ndarray) -> np.ndarray:
     return embedding.astype(np.float32)
 
 
-def compute_fallback_embedding(image: Image.Image) -> np.ndarray:
-    rgb_small = np.asarray(
-        image.resize(RGB_RESIZE, Image.Resampling.BILINEAR),
-        dtype=np.float32,
-    ) / 255.0
-    gray_small = np.asarray(
-        image.convert("L").resize(GRAY_RESIZE, Image.Resampling.BILINEAR),
-        dtype=np.float32,
-    ) / 255.0
-
-    gradient_y, gradient_x = np.gradient(gray_small)
-    edge_magnitude = np.sqrt(np.square(gradient_x) + np.square(gradient_y))
-
-    color_histograms = []
-    for channel_index in range(3):
-        histogram, _ = np.histogram(
-            rgb_small[:, :, channel_index],
-            bins=HISTOGRAM_BINS,
-            range=(0.0, 1.0),
-            density=True,
-        )
-        color_histograms.append(histogram.astype(np.float32))
-
-    grayscale_histogram, _ = np.histogram(
-        gray_small,
-        bins=GRAYSCALE_HISTOGRAM_BINS,
-        range=(0.0, 1.0),
-        density=True,
-    )
-
-    width, height = image.size
-    aspect_features = np.array(
-        [
-            width / max(height, 1),
-            height / max(width, 1),
-        ],
-        dtype=np.float32,
-    )
-
-    channel_means = rgb_small.mean(axis=(0, 1)).astype(np.float32)
-    channel_stds = rgb_small.std(axis=(0, 1)).astype(np.float32)
-
-    combined = np.concatenate(
-        [
-            rgb_small.flatten(),
-            gray_small.flatten(),
-            edge_magnitude.astype(np.float32).flatten(),
-            np.concatenate(color_histograms),
-            channel_means,
-            channel_stds,
-            aspect_features,
-            grayscale_histogram.astype(np.float32),
-        ]
-    )
-
-    return normalize_embedding(combined)
-
-
 def compute_image_embedding(
     image: Image.Image,
     requested_model: str,
@@ -295,7 +234,7 @@ def compute_image_embedding(
     normalized_model = requested_model.strip().lower() or "auto"
     warning: str | None = None
 
-    if normalized_model in DINOV3_MODEL_ALIASES:
+    if normalized_model in MODEL_ALIASES:
         embedding, warning = compute_cat_focused_embedding(image)
         if embedding is not None:
             return (
@@ -305,8 +244,7 @@ def compute_image_embedding(
                 warning,
             )
 
-    fallback_embedding = compute_fallback_embedding(image)
-    return fallback_embedding, "fallback-hybrid", True, warning
+    raise HTTPException(status_code=503, detail="Photo search is temporarily unavailable")
 
 
 @app.get("/health")
@@ -316,7 +254,7 @@ def health() -> dict[str, Any]:
         "service": "ai",
         "defaultModel": DEFAULT_MODEL_NAME,
         "offlineModelLoad": OFFLINE_MODEL_LOAD,
-        "modelAliases": sorted(DINOV3_MODEL_ALIASES),
+        "modelAliases": sorted(MODEL_ALIASES),
         "transformersModelName": TRANSFORMERS_MODEL_NAME,
         "pipelineModelName": PIPELINE_MODEL_NAME,
         "embeddingDimensions": TARGET_EMBEDDING_DIM,
@@ -331,10 +269,27 @@ def health() -> dict[str, Any]:
     }
 
 
+@app.get("/ready")
+def ready() -> dict[str, Any]:
+    global _ready
+    with _model_lock:
+        if not _ready:
+            try:
+                # Load actual weights and run the feature extractor, not just imports.
+                get_cat_detector()
+                probe = get_transformers_embedder(TRANSFORMERS_MODEL_NAME).embed(Image.new("RGB", (224, 224)))
+                if not np.all(np.isfinite(probe)) or not np.any(probe):
+                    raise RuntimeError("Invalid model output")
+                _ready = True
+            except Exception as error:
+                raise HTTPException(status_code=503, detail="Photo search is warming up or unavailable") from error
+    return {"status": "ready", "service": "ai", "model": PIPELINE_MODEL_NAME}
+
+
 @app.post("/embed")
 def embed(payload: EmbedRequest) -> dict[str, Any]:
-    if not payload.imagePaths:
-        raise HTTPException(status_code=400, detail="imagePaths is required")
+    if not 1 <= len(payload.imagePaths) <= 4:
+        raise HTTPException(status_code=400, detail="Upload between one and four photos")
 
     existing_paths = [resolve_image_path(image_path) for image_path in payload.imagePaths]
     missing_paths = [str(path) for path in existing_paths if not path.exists()]
@@ -351,12 +306,16 @@ def embed(payload: EmbedRequest) -> dict[str, Any]:
     warning_messages: list[str] = []
 
     for path in existing_paths:
-        with Image.open(path) as image_file:
-            image = image_file.convert("RGB")
-            embedding, model_name, used_fallback, warning = compute_image_embedding(
-                image,
-                DEFAULT_MODEL_NAME,
-            )
+        try:
+            with Image.open(path) as image_file:
+                if image_file.format not in {"JPEG", "PNG", "GIF", "WEBP"}:
+                    raise ValueError("Unsupported photo format")
+                if image_file.width * image_file.height > 25_000_000:
+                    raise ValueError("Photo is too large")
+                image = image_file.convert("RGB")
+                embedding, model_name, used_fallback, warning = compute_image_embedding(image, DEFAULT_MODEL_NAME)
+        except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as error:
+            raise HTTPException(status_code=400, detail="Use a readable JPG, PNG, GIF or WebP photo under 25 megapixels") from error
 
         embeddings.append(embedding)
         resolved_model_name = model_name

@@ -1,6 +1,7 @@
 import { defineConfig } from '@mikro-orm/core';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { config } from 'dotenv';
+import { Migrator } from '@mikro-orm/migrations';
 
 // Load environment variables from specific files
 config({ path: '.env.development.local' });
@@ -31,6 +32,7 @@ if (
 
 const db_config = defineConfig({
   driver: PostgreSqlDriver,
+  extensions: [Migrator],
   ...(databaseUrl
     ? { clientUrl: databaseUrl }
     : {
@@ -39,18 +41,21 @@ const db_config = defineConfig({
         user: process.env.DB_USER_NEST || 'postgres',
         password: process.env.DB_PASSWORD_NEST || 'password',
         dbName: process.env.DB_NAME_NEST || 'mydb',
-        ...(sslEnabled
-          ? {
-              driverOptions: {
-                connection: {
-                  ssl: {
-                    rejectUnauthorized: sslRejectUnauthorized,
-                  },
-                },
-              },
-            }
-          : {}),
       }),
+  ...(sslEnabled
+    ? {
+        driverOptions: {
+          connection: {
+            ssl: {
+              rejectUnauthorized: sslRejectUnauthorized,
+              ...(process.env.DB_SSL_CA
+                ? { ca: process.env.DB_SSL_CA.replace(/\\n/g, '\n') }
+                : {}),
+            },
+          },
+        },
+      }
+    : {}),
   pool: {
     min: 0,
     max: Number.isFinite(poolMax) ? poolMax : 10,

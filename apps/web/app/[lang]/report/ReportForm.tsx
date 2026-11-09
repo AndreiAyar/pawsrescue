@@ -408,8 +408,8 @@ export default function ReportForm({ lang, labels }: ReportFormProps) {
             <Button
               type="submit"
               buttonType="peach"
-              className="mt-6"
-              innerClassName="w-full px-8 sm:w-auto"
+              className="mt-6 w-full sm:w-auto"
+              innerClassName="w-full whitespace-nowrap px-8"
               disabled={submitting}
             >
               {submitting ? labels.submitting : labels.submit}

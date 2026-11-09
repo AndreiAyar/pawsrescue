@@ -2,8 +2,10 @@
 import { useEffect, useState, useRef, useImperativeHandle } from "react";
 import { ImageLightbox } from "./imageLightbox";
 
-interface FileUploadProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
+interface FileUploadProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "onChange"
+> {
   className?: string;
   maxFiles?: number;
   accept?: string;
@@ -21,8 +23,6 @@ const ALLOWED_PHOTO_TYPES = [
   "image/png",
   "image/gif",
   "image/webp",
-  "image/heic",
-  "image/heif",
 ];
 
 function FilePreview({ file, index }: { file: File; index: number }) {
@@ -49,7 +49,7 @@ function FilePreview({ file, index }: { file: File; index: number }) {
 export const FileUpload = ({
   className,
   maxFiles = 5,
-  accept = "image/jpeg,image/jpg,image/png,image/gif,image/webp,image/heic,image/heif",
+  accept = "image/jpeg,image/jpg,image/png,image/gif,image/webp",
   onChange,
   onBlur,
   showPreview = true,
@@ -85,8 +85,9 @@ export const FileUpload = ({
         .filter((file) => isValidPhotoType(file))
         .slice(0, maxFiles);
       setSelectedFiles(fileArray);
-
-      // Call onChange with the event (RHF compatible)
+      const normalized = new DataTransfer();
+      fileArray.forEach((file) => normalized.items.add(file));
+      event.target.files = normalized.files;
       onChange?.(event);
     }
   };
@@ -169,6 +170,15 @@ export const FileUpload = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        aria-label="Choose photos"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleClick();
+          }
+        }}
       >
         <input
           {...props}
@@ -200,7 +210,7 @@ export const FileUpload = ({
             drop
           </p>
           <p className="text-xs text-gray-500">
-            Only photos (JPG, PNG, GIF, WebP, HEIC) up to {maxFiles} files
+            JPG, PNG, GIF or WebP, up to {maxFiles} files
           </p>
         </div>
       </div>
@@ -213,12 +223,13 @@ export const FileUpload = ({
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {selectedFiles.map((file, index) => (
-              <div key={index} className="relative group w-16 h-16">
+              <div key={index} className="relative group w-16 min-w-0">
                 <FilePreview file={file} index={index} />
 
                 {/* Remove button */}
                 <button
                   type="button"
+                  aria-label={`Remove photo ${index + 1}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     removeFile(index);
@@ -228,9 +239,8 @@ export const FileUpload = ({
                   ×
                 </button>
 
-                {/* File name */}
-                <p className="text-xs text-gray-500 mt-1 truncate">
-                  {file.name}
+                <p className="mt-1 text-xs leading-4 text-gray-500">
+                  Photo {index + 1}
                 </p>
               </div>
             ))}

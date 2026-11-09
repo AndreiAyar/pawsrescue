@@ -1,0 +1,67 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17-bookworm
+        env:
+          POSTGRES_DB: pawsrescue_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pawsrescue_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DB_HOST_NEST: localhost
+      DB_PORT_NEST: 5432
+      DB_USER_NEST: postgres
+      DB_PASSWORD_NEST: postgres
+      DB_NAME_NEST: pawsrescue_test
+      DB_SSL: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run check-types
+      - run: npm run --workspace api test -- --runInBand
+      - run: npm run --workspace api test:e2e -- --runInBand
+      - run: npm run test:map-cache
+      - run: npm run --workspace api migration:up
+      - run: npm run --workspace api migration:up
+      - run: npm run --workspace api test:queue
+      - run: docker build -f apps/web/Dockerfile -t pawsrescue-web:check .
+      - run: docker build -f apps/api/Dockerfile -t pawsrescue-api:check .
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: apps/ai/requirements.txt
+      - run: pip install torch==2.15.0 torchvision==0.29.2 --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r apps/ai/requirements.txt
+      - run: python -m pip check
+      - run: python -m unittest -v test_main
+        working-directory: apps/ai

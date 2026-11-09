@@ -16,6 +16,25 @@ async function requestJson(path, init) {
   return response.json();
 }
 
+async function waitForEmbedding(pet) {
+  const deadline = Date.now() + 10 * 60 * 1000;
+  while (
+    pet.embeddingStatus === "pending" ||
+    pet.embeddingStatus === "processing"
+  ) {
+    if (Date.now() > deadline)
+      throw new Error(`Timed out processing listing ${pet.id}.`);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    pet = await requestJson(`/lost-pets/${pet.id}`);
+  }
+  if (!pet.embeddingInfo || pet.embeddingInfo.fallbackUsed) {
+    throw new Error(
+      `Listing ${pet.id} was saved, but its image matching needs attention.`,
+    );
+  }
+  return pet;
+}
+
 async function main() {
   const existing = await requestJson("/lost-pets");
   if (!Array.isArray(existing))
@@ -31,6 +50,7 @@ async function main() {
   for (const [index, cat] of fixture.cats.entries()) {
     const previous = existing.find((pet) => pet.email === cat.email);
     if (previous) {
+      await waitForEmbedding(previous);
       console.log(`Already exists: ${previous.name} #${previous.id}`);
       continue;
     }
@@ -54,11 +74,7 @@ async function main() {
     });
     existing.push(created);
     console.log(`Created: ${created.name} #${created.id} · ${created.city}`);
-    if (!created.embeddingInfo || created.embeddingInfo.fallbackUsed) {
-      throw new Error(
-        `Listing ${created.id} was saved, but its image matching needs attention.`,
-      );
-    }
+    await waitForEmbedding(created);
   }
 
   const current = await requestJson("/lost-pets");

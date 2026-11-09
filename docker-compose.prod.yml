@@ -1,6 +1,27 @@
 name: pawsrescue
 
 services:
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   uploads-init:
     image: alpine:3.21
     command: ["sh", "-c", "chown -R 1000:1000 /shared-uploads"]
@@ -15,6 +36,8 @@ services:
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     depends_on:
+      redis:
+        condition: service_healthy
       uploads-init:
         condition: service_completed_successfully
       ai:
@@ -22,6 +45,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3015
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       DATABASE_URL: ${DATABASE_URL:-}
       DB_HOST_NEST: ${DB_HOST_NEST:-}
       DB_PORT_NEST: ${DB_PORT_NEST:-5432}
@@ -29,10 +54,12 @@ services:
       DB_PASSWORD_NEST: ${DB_PASSWORD_NEST:-}
       DB_NAME_NEST: ${DB_NAME_NEST:-postgres}
       DB_SSL: ${DB_SSL:-true}
-      DB_SSL_REJECT_UNAUTHORIZED: ${DB_SSL_REJECT_UNAUTHORIZED:-false}
+      DB_SSL_REJECT_UNAUTHORIZED: ${DB_SSL_REJECT_UNAUTHORIZED:-true}
+      DB_SSL_CA: ${DB_SSL_CA:-}
       DB_POOL_MAX: ${DB_POOL_MAX:-10}
       AI_SERVICE_URL: http://ai:8000
       AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-180000}
+      AI_MATCH_MAX_DISTANCE: ${AI_MATCH_MAX_DISTANCE:-0.5}
       USE_MOCK_DATA: "false"
       UPLOAD_DIR: /shared-uploads
       CORS_ORIGINS: ${CORS_ORIGINS:-}
@@ -44,10 +71,10 @@ services:
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3015/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3015/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 15s
-      timeout: 5s
+      timeout: 125s
       retries: 10
       start_period: 30s
     volumes:
@@ -81,7 +108,7 @@ services:
           "fetch('http://127.0.0.1:3060/ro').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 15s
-      timeout: 5s
+      timeout: 125s
       retries: 10
       start_period: 30s
     networks:
@@ -98,6 +125,7 @@ services:
     environment:
       AI_PORT: 8000
       AI_MODEL_NAME: ${AI_MODEL_NAME:-auto}
+      AI_TRANSFORMERS_MODEL_NAME: ${AI_TRANSFORMERS_MODEL_NAME:-facebook/dinov2-small}
       AI_OFFLINE_MODEL_LOAD: ${AI_OFFLINE_MODEL_LOAD:-false}
       AI_TARGET_EMBEDDING_DIM: ${AI_TARGET_EMBEDDING_DIM:-1024}
       AI_CAT_DETECTION_THRESHOLD: ${AI_CAT_DETECTION_THRESHOLD:-0.65}
@@ -112,14 +140,14 @@ services:
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=120)",
         ]
       interval: 20s
-      timeout: 5s
+      timeout: 125s
       retries: 10
-      start_period: 90s
+      start_period: 180s
     volumes:
-      - shared-uploads:/shared-uploads
+      - shared-uploads:/shared-uploads:ro
       - ai-cache:/home/appuser/.cache
     networks:
       - internal
@@ -129,5 +157,6 @@ networks:
     driver: bridge
 
 volumes:
+  redis-data:
   ai-cache:
   shared-uploads:

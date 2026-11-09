@@ -1,13 +1,18 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
-  "globalEnv": ["NODE_ENV"],
+  "globalEnv": ["NODE_ENV", "API_PROXY_ENABLED"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "env": ["API_URL", "NEXT_DIST_DIR", "NEXT_PUBLIC_MAPTILER_API_KEY"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        "public/vendor/maplibre/**"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]

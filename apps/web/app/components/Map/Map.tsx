@@ -165,8 +165,7 @@ export default function MapView({
       cacheRef.current.isCovered(normalizedZoom, coverageBbox)
     ) {
       const source = map.current.getSource("lostPetsJson") as
-        | maptilersdk.GeoJSONSource
-        | undefined;
+        maptilersdk.GeoJSONSource | undefined;
       if (source) {
         cacheRef.current.applyToSource(normalizedZoom, source);
       }
@@ -209,16 +208,12 @@ export default function MapView({
         return;
       }
       const source = map.current.getSource("lostPetsJson") as
-        | maptilersdk.GeoJSONSource
-        | undefined;
+        maptilersdk.GeoJSONSource | undefined;
       if (!source) {
         return;
       }
 
       const incoming = geojson as GeoJSONData;
-      if (persistClusterFeatures) {
-        cacheRef.current.addCoverage(normalizedZoom, coverageBbox);
-      }
       if (
         persistClusterFeatures &&
         incoming.type === "FeatureCollection" &&
@@ -227,6 +222,7 @@ export default function MapView({
         source.setData(
           cacheRef.current.upsertFeatures(normalizedZoom, incoming.features),
         );
+        cacheRef.current.addCoverage(normalizedZoom, coverageBbox);
         return;
       }
 

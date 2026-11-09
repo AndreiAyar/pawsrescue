@@ -16,5 +16,5 @@ docker compose --env-file "$ENV_FILE" -f docker-compose.prod.yml up \
   -d \
   --remove-orphans \
   --wait \
-  --wait-timeout 240
+  --wait-timeout 600
 docker compose --env-file "$ENV_FILE" -f docker-compose.prod.yml ps

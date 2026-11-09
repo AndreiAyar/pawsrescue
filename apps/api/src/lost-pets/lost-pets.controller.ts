@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -26,8 +27,6 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/png',
   'image/gif',
   'image/webp',
-  'image/heic',
-  'image/heif',
 ]);
 
 const UPLOAD_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
@@ -36,8 +35,6 @@ const UPLOAD_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
   'image/png': '.png',
   'image/gif': '.gif',
   'image/webp': '.webp',
-  'image/heic': '.heic',
-  'image/heif': '.heif',
 };
 
 function buildUploadFilename(file: { mimetype: string }, prefix = '') {
@@ -97,7 +94,9 @@ export class LostPetsController {
       }),
       fileFilter: (_request, file, callback) => {
         callback(
-          null,
+          ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype.toLowerCase())
+            ? null
+            : new BadRequestException('Use JPG, PNG, GIF or WebP photos'),
           ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype.toLowerCase()),
         );
       },
@@ -133,7 +132,9 @@ export class LostPetsController {
       }),
       fileFilter: (_request, file, callback) => {
         callback(
-          null,
+          ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype.toLowerCase())
+            ? null
+            : new BadRequestException('Use JPG, PNG, GIF or WebP photos'),
           ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype.toLowerCase()),
         );
       },

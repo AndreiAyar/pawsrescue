@@ -5,6 +5,7 @@ import { AppModule } from '../app.module';
 import { LostPetsService } from '../lost-pets/lost-pets.service';
 
 async function rebuildEmbeddings() {
+  process.env.EMBEDDING_WORKER_ENABLED = 'false';
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn', 'log'],
   });

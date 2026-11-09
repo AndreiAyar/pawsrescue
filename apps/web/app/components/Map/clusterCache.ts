@@ -31,14 +31,6 @@ export const createClusterCache = ({
     outer[1] <= inner[1] &&
     outer[2] >= inner[2] &&
     outer[3] >= inner[3];
-  const bboxOverlaps = (a: BBox, b: BBox) =>
-    a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
-  const mergeBbox = (a: BBox, b: BBox): BBox => [
-    Math.min(a[0], b[0]),
-    Math.min(a[1], b[1]),
-    Math.max(a[2], b[2]),
-    Math.max(a[3], b[3]),
-  ];
   const getFeatureCacheKey = (feature: Feature<Geometry>) => {
     const properties = feature.properties as
       | {
@@ -55,7 +47,7 @@ export const createClusterCache = ({
       if (clusterId === undefined || clusterId === null) {
         return null;
       }
-      return `c:${clusterId}`;
+      return `c:${clusterId}:${JSON.stringify(feature.geometry)}`;
     }
     const featureId = properties?.id ?? feature.id;
     if (featureId === undefined || featureId === null) {
@@ -108,22 +100,14 @@ export const createClusterCache = ({
 
   const addCoverage = (zoomLevel: number, bbox: BBox) => {
     const list = coverageByZoom.get(zoomLevel) ?? [];
-    let merged = bbox;
-    let index = 0;
-    while (index < list.length) {
-      const current = list[index];
-      if (!current) {
-        break;
-      }
-      if (bboxOverlaps(current, merged)) {
-        merged = mergeBbox(current, merged);
-        list.splice(index, 1);
-        index = 0;
-        continue;
-      }
-      index += 1;
+    // Only union rectangles when containment makes their union rectangular.
+    // A bounding box around an L-shaped union would mark unvisited space loaded.
+    if (list.some((entry) => bboxContains(entry, bbox))) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const entry = list[i];
+      if (entry && bboxContains(bbox, entry)) list.splice(i, 1);
     }
-    list.push(merged);
+    list.push(bbox);
     if (list.length > maxCoveragePerZoom) {
       list.sort(
         (a, b) => (b[2] - b[0]) * (b[3] - b[1]) - (a[2] - a[0]) * (a[3] - a[1]),
@@ -134,8 +118,9 @@ export const createClusterCache = ({
   };
 
   const upsertFeatures = (zoomLevel: number, features: Feature<Geometry>[]) => {
-    const featureMap = featuresByZoom.get(zoomLevel) ?? new Map();
-    const featureOrder = orderByZoom.get(zoomLevel) ?? [];
+    const featureMap = new Map<string, Feature<Geometry>>();
+    const featureOrder: string[] = [];
+    coverageByZoom.delete(zoomLevel);
 
     for (const feature of features) {
       if (!feature || feature.type !== "Feature") {

@@ -27,8 +27,11 @@ async function main() {
   console.log(
     `Model availability: transformers=${Boolean(
       health.transformersAvailable,
-    )}, timm=${Boolean(health.timmAvailable)}`,
+    )}, catDetector=${Boolean(health.catDetectorAvailable)}`,
   );
+
+  const ready = await requestJson(`${aiBaseUrl}/ready`);
+  console.log("AI readiness", ready.status);
 
   if (!imagePathArg) {
     console.log("");

@@ -13,6 +13,7 @@ jest.mock('supercluster', () => {
 
 import { LostPetsService } from './lost-pets.service';
 import { LostPetEntity } from './lost-pets.entity';
+import { EmbeddingQueueService } from '../embeddings/embedding-queue.service';
 
 describe('LostPetsService', () => {
   let service: LostPetsService;
@@ -24,6 +25,7 @@ describe('LostPetsService', () => {
   };
 
   const execute = jest.fn();
+  const enqueue = jest.fn();
   const entityManager = {
     getConnection: jest.fn(() => ({
       execute,
@@ -39,6 +41,7 @@ describe('LostPetsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LostPetsService,
+        { provide: EmbeddingQueueService, useValue: { enqueue } },
         {
           provide: getRepositoryToken(LostPetEntity),
           useValue: repository,
@@ -147,7 +150,7 @@ describe('LostPetsService', () => {
     expect(pets[0].updatedAt).toEqual(pets[0].createdAt);
   });
 
-  it('returns embedding metadata immediately after a real create with photos', async () => {
+  it('returns a pending report without waiting for inference', async () => {
     process.env.USE_MOCK_DATA = 'false';
 
     const createdEntity = buildEntity();
@@ -156,6 +159,7 @@ describe('LostPetsService', () => {
     createdEntity.embeddingModel = undefined;
     createdEntity.embeddingFallbackUsed = undefined;
     createdEntity.embeddingWarning = undefined;
+    createdEntity.embeddingStatus = 'pending';
     repository.create.mockReturnValue(createdEntity);
 
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
@@ -183,15 +187,15 @@ describe('LostPetsService', () => {
       [buildPhoto('/shared-uploads/luna.jpg')],
     );
 
-    expect(fetchMock).toHaveBeenCalled();
-    expect(result.embeddingInfo).toMatchObject({
-      model: 'dinov3-cat-crop-v1:facebook/dinov3-vitl16-pretrain-lvd1689m',
-      fallbackUsed: false,
-      warning: null,
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(enqueue).toHaveBeenCalledWith(21);
+    expect(result).toMatchObject({
+      embeddingStatus: 'pending',
+      embeddingInfo: null,
     });
   });
 
-  it('keeps a saved report available when embedding generation fails', async () => {
+  it('keeps a saved report and its photos when Redis is unavailable', async () => {
     process.env.USE_MOCK_DATA = 'false';
 
     const createdEntity = buildEntity();
@@ -200,9 +204,10 @@ describe('LostPetsService', () => {
     createdEntity.embeddingModel = undefined;
     createdEntity.embeddingFallbackUsed = undefined;
     createdEntity.embeddingWarning = undefined;
+    createdEntity.embeddingStatus = 'pending';
     repository.create.mockReturnValue(createdEntity);
 
-    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('AI down'));
+    enqueue.mockRejectedValueOnce(new Error('Redis down'));
     (
       service as unknown as {
         logger: { error: (...args: unknown[]) => void };
@@ -221,7 +226,11 @@ describe('LostPetsService', () => {
     );
 
     expect(entityManager.persistAndFlush).toHaveBeenCalledWith(createdEntity);
-    expect(result).toMatchObject({ id: 22, embeddingInfo: null });
+    expect(result).toMatchObject({
+      id: 22,
+      embeddingStatus: 'pending',
+      embeddingInfo: null,
+    });
   });
 
   it('returns normalized real match results with query embedding metadata', async () => {
@@ -232,17 +241,17 @@ describe('LostPetsService', () => {
       text: () =>
         Promise.resolve(
           JSON.stringify({
-            model: 'fallback-hybrid',
-            fallbackUsed: true,
-            warning: 'model download unavailable',
+            model: 'dinov2-cat-crop-v1:facebook/dinov2-small',
+            fallbackUsed: false,
+            warning: null,
             embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
           }),
         ),
       json: () =>
         Promise.resolve({
-          model: 'fallback-hybrid',
-          fallbackUsed: true,
-          warning: 'model download unavailable',
+          model: 'dinov2-cat-crop-v1:facebook/dinov2-small',
+          fallbackUsed: false,
+          warning: null,
           embedding: Array.from({ length: 1024 }, (_, index) => index / 1000),
         }),
     } as Response);
@@ -274,14 +283,14 @@ describe('LostPetsService', () => {
     expect(execute).toHaveBeenCalled();
     expect(execute).toHaveBeenCalledWith(
       expect.stringContaining('"embedding" <=> ?::vector'),
-      expect.arrayContaining(['fallback-hybrid']),
+      expect.arrayContaining(['dinov2-cat-crop-v1:facebook/dinov2-small']),
     );
     expect(result).toMatchObject({
       mode: 'real',
       queryEmbedding: {
-        model: 'fallback-hybrid',
-        fallbackUsed: true,
-        warning: 'model download unavailable',
+        model: 'dinov2-cat-crop-v1:facebook/dinov2-small',
+        fallbackUsed: false,
+        warning: null,
       },
       matches: [
         {
@@ -293,6 +302,141 @@ describe('LostPetsService', () => {
         },
       ],
     });
+  });
+  it.each([
+    { latitude: null },
+    { latitude: '' },
+    { longitude: 181 },
+    { latitude: -91 },
+    { type: 'dragon' },
+    { email: 'invalid' },
+    { name: { value: 'cat' } },
+    { description: 'x'.repeat(1001) },
+  ])('rejects invalid report input before persistence: %j', async (invalid) => {
+    await expect(
+      service.create({
+        name: 'Pufi',
+        type: 'cat',
+        email: 'a@example.com',
+        latitude: 45,
+        longitude: 21,
+        ...invalid,
+      } as never),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(entityManager.persistAndFlush).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for missing and invalid cluster query parameters', async () => {
+    await expect(
+      service.getClusters(undefined as never, '10'),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(service.getClusters('0,0,1,1', 'NaN')).rejects.toMatchObject({
+      status: 400,
+    });
+    await expect(
+      service.getClusters('0,0,Infinity,1', '10'),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      service.getClustersForTile(5, 1, 1, '999999'),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  function mockEmbedding(fallbackUsed = false) {
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            model: fallbackUsed
+              ? 'fallback-hybrid'
+              : 'dinov2-cat-crop-v1:facebook/dinov2-small',
+            fallbackUsed,
+            embedding: Array(1024).fill(0.1),
+          }),
+        ),
+    } as Response);
+  }
+
+  it('returns an empty result instead of filling the list with distant photos', async () => {
+    process.env.USE_MOCK_DATA = 'false';
+    mockEmbedding();
+    execute.mockResolvedValue([
+      { id: 1, score: 0.8 },
+      { id: 2, score: 1.1 },
+    ]);
+    const result = await service.match([buildPhoto('/tmp/cat.jpg')]);
+    expect(result.matches).toEqual([]);
+    expect(result.queryEmbedding?.fallbackUsed).toBe(false);
+  });
+
+  it('returns 503 rather than matching fabricated fallback vectors', async () => {
+    process.env.USE_MOCK_DATA = 'false';
+    mockEmbedding(true);
+    await expect(
+      service.match([buildPhoto('/tmp/cat.jpg')]),
+    ).rejects.toMatchObject({ status: 503 });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 when the AI service cannot be reached', async () => {
+    process.env.USE_MOCK_DATA = 'false';
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('unavailable'));
+    await expect(
+      service.match([buildPhoto('/tmp/cat.jpg')]),
+    ).rejects.toMatchObject({ status: 503 });
+  });
+
+  it('processes a queued report and saves a real embedding as ready', async () => {
+    repository.findOne.mockResolvedValue({
+      ...buildEntity(),
+      embeddingStatus: 'pending',
+      embedding: undefined,
+    });
+    mockEmbedding();
+    await expect(service.processEmbedding(1)).resolves.toEqual({ petId: 1 });
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining('"embedding_status" = \'ready\''),
+      expect.arrayContaining([1]),
+    );
+  });
+
+  it('does not run inference again for a ready or deleted report', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    repository.findOne
+      .mockResolvedValueOnce(buildEntity())
+      .mockResolvedValueOnce(null);
+    await service.processEmbedding(1);
+    await service.processEmbedding(2);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not index fallback vectors from background processing', async () => {
+    repository.findOne.mockResolvedValue({
+      ...buildEntity(),
+      embeddingStatus: 'pending',
+    });
+    mockEmbedding(true);
+    await expect(service.processEmbedding(1)).rejects.toMatchObject({
+      status: 503,
+    });
+    expect(execute).not.toHaveBeenCalledWith(
+      expect.stringContaining('"embedding_status" = \'ready\''),
+      expect.anything(),
+    );
+  });
+
+  it('recovers pending reports and reconciles exhausted jobs', async () => {
+    execute.mockResolvedValueOnce([{ id: 3 }, { id: 4 }]);
+    enqueue
+      .mockResolvedValueOnce({ getState: () => Promise.resolve('waiting') })
+      .mockResolvedValueOnce({ getState: () => Promise.resolve('failed') });
+    await service.recoverPendingEmbeddings();
+    expect(enqueue.mock.calls.slice(-2)).toEqual([[3], [4]]);
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining('"embedding_status" = ?'),
+      ['failed', 4],
+    );
   });
 });
 
@@ -323,10 +467,11 @@ function buildEntity(): LostPetEntity {
     longitude: 26.1,
     imageUrls: ['/uploads/luna.jpg'],
     embedding: '[0.1,0.2,0.3]',
+    embeddingStatus: 'ready',
     embeddingModel: 'timm:vit_base_patch16_224_dino+vit_base_patch8_224_dino',
     embeddingFallbackUsed: true,
     embeddingWarning: 'offline fallback',
     createdAt: new Date('2026-06-11T08:00:00.000Z'),
     updatedAt: new Date('2026-06-11T08:00:00.000Z'),
-  } as LostPetEntity;
+  };
 }

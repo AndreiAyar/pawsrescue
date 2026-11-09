@@ -26,6 +26,21 @@ type ScanFormProps = {
     submit: string;
     submitting: string;
     empty: string;
+    idleTitle: string;
+    noResultsTitle: string;
+    noResultsBody: string;
+    searchingTitle: string;
+    searchingBody: string;
+    unavailableTitle: string;
+    unavailableBody: string;
+    invalidPhoto: string;
+    choosePhoto: string;
+    browseMap: string;
+    tryPhoto: string;
+    allAreas: string;
+    resultsHint: string;
+    fullPhotoNotice: string;
+
     resultsTitle: string;
     openListing: string;
     matchPercent: string;
@@ -45,11 +60,6 @@ type ScanResult = {
   longitude: number;
   score: number;
 };
-
-function getMatchPercent(score: number) {
-  const cosineSimilarity = 1 - Math.max(0, Math.min(score, 1));
-  return Math.round(cosineSimilarity * 100);
-}
 
 function getResultImageUrl(imageUrl: string | null) {
   if (!imageUrl) {
@@ -72,54 +82,78 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
   const [photos, setPhotos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [searched, setSearched] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  const [fullPhoto, setFullPhoto] = useState(false);
   const [results, setResults] = useState<ScanResult[]>([]);
   const [selectedResultId, setSelectedResultId] = useState<number | null>(null);
   const selectedResult =
     results.find((result) => result.id === selectedResultId) ?? results[0];
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitting(true);
+  const search = async (searchCity = city) => {
     setError("");
+    if (photos.length === 0) {
+      setError(labels.choosePhoto);
+      return;
+    }
+    if (photos.some((photo) => photo.size > 8 * 1024 * 1024)) {
+      setError(labels.invalidPhoto);
+      return;
+    }
+    setSubmitting(true);
+    setUnavailable(false);
+    setSearched(false);
+    setFullPhoto(false);
     setResults([]);
     setSelectedResultId(null);
-
     const payload = new FormData();
-    if (city.trim()) {
-      payload.set("city", city.trim());
-    }
+    if (searchCity.trim()) payload.set("city", searchCity.trim());
     photos.forEach((photo) => payload.append("photos", photo));
-
     try {
       const response = await fetch("/api/lost-pets/match", {
         method: "POST",
         body: payload,
       });
-
-      const data = await response.json();
-
+      const data = await response.json().catch(() => null);
       if (!response.ok) {
-        setError(
-          data?.message ?? data?.detail ?? "Could not scan for matches.",
-        );
+        if ([400, 413, 422].includes(response.status))
+          setError(labels.invalidPhoto);
+        else setUnavailable(true);
         return;
       }
-
-      const matches = Array.isArray(data?.matches)
-        ? (data.matches as ScanResult[])
-        : [];
+      if (!Array.isArray(data?.matches) || data?.queryEmbedding?.fallbackUsed) {
+        setUnavailable(true);
+        return;
+      }
+      const matches = data.matches as ScanResult[];
       setResults(matches);
       setSelectedResultId(matches[0]?.id ?? null);
-    } catch (scanError) {
-      setError(
-        scanError instanceof Error
-          ? scanError.message
-          : "Could not scan for matches.",
-      );
+      setFullPhoto(Boolean(data.queryEmbedding?.warning));
+      setSearched(true);
+    } catch {
+      setUnavailable(true);
     } finally {
       setSubmitting(false);
     }
   };
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void search();
+  };
+  const stateTitle = submitting
+    ? labels.searchingTitle
+    : unavailable
+      ? labels.unavailableTitle
+      : searched
+        ? labels.noResultsTitle
+        : labels.idleTitle;
+  const stateBody = submitting
+    ? labels.searchingBody
+    : unavailable
+      ? labels.unavailableBody
+      : searched
+        ? labels.noResultsBody
+        : labels.empty;
 
   return (
     <main className="min-h-screen bg-warm-texture text-slate-900">
@@ -175,7 +209,10 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
             </div>
 
             {error ? (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div
+                role="alert"
+                className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
                 {error}
               </div>
             ) : null}
@@ -183,28 +220,104 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
             <Button
               type="submit"
               buttonType="mint"
-              className="mt-6"
-              innerClassName="w-full sm:w-auto"
+              className="mt-6 w-full sm:w-auto"
+              innerClassName="w-full whitespace-nowrap px-8"
               disabled={submitting}
             >
               {submitting ? labels.submitting : labels.submit}
             </Button>
           </form>
 
-          <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]">
+          <section
+            aria-busy={submitting}
+            aria-live="polite"
+            className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-[0_18px_30px_-24px_rgba(31,41,55,0.4)]"
+          >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-2xl font-bold">
                 {labels.resultsTitle}
               </h2>
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                {results.length}
-              </span>
+              {results.length > 0 ? (
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                  {results.length}
+                </span>
+              ) : null}
             </div>
 
             {results.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-600">{labels.empty}</p>
+              <div className="flex min-h-80 flex-col items-center justify-center px-3 py-10 text-center sm:px-6">
+                <div
+                  className={`mb-6 grid h-20 w-20 place-items-center rounded-[1.75rem] border border-amber-200 bg-amber-50 text-amber-900 ${submitting ? "animate-pulse" : ""}`}
+                >
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 48 48"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-11 w-11"
+                  >
+                    <path
+                      d="M12 23V12l9 5a18 18 0 0 1 7 0l8-5v12c2 12-3 17-12 17S10 35 12 23Z"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M18 27h.01M30 27h.01M22 32l2 2 2-2M8 29l8 1M32 30l8-1"
+                      strokeLinecap="round"
+                      strokeWidth="3"
+                    />
+                  </svg>
+                </div>
+                <h3 className="max-w-sm font-display text-2xl font-bold leading-tight text-slate-900">
+                  {stateTitle}
+                </h3>
+                <p className="mt-3 max-w-sm text-sm leading-6 text-slate-600">
+                  {stateBody}
+                </p>
+                {!submitting ? (
+                  <div className="mt-6 flex flex-wrap justify-center gap-3">
+                    {searched || unavailable ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          document.getElementById("photos")?.click()
+                        }
+                        className="rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-4"
+                      >
+                        {labels.tryPhoto}
+                      </button>
+                    ) : null}
+                    <Link
+                      href={`/${lang}/search`}
+                      className="rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-amber-50"
+                    >
+                      {labels.browseMap}
+                    </Link>
+                  </div>
+                ) : null}
+                {searched && city.trim() && !submitting ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCity("");
+                      void search("");
+                    }}
+                    className="mt-4 text-sm font-semibold underline underline-offset-4"
+                  >
+                    {labels.allAreas}
+                  </button>
+                ) : null}
+              </div>
             ) : (
               <div className="mt-4 grid gap-4">
+                <p className="text-sm leading-6 text-slate-600">
+                  {labels.resultsHint}
+                </p>
+                {fullPhoto ? (
+                  <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    {labels.fullPhotoNotice}
+                  </p>
+                ) : null}
                 {results.map((result) => (
                   <article
                     key={result.id}
@@ -238,7 +351,6 @@ export default function ScanForm({ lang, labels }: ScanFormProps) {
                             </p>
                           </div>
                           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase text-emerald-800">
-                            {getMatchPercent(result.score)}%{" "}
                             {labels.matchPercent}
                           </span>
                         </div>

@@ -7,6 +7,7 @@
     "dev": "sh ./scripts/run-uvicorn.sh",
     "dev:reload": "WATCHFILES_FORCE_POLLING=true sh ./scripts/run-uvicorn.sh --reload",
     "start": "sh ./scripts/run-uvicorn.sh",
-    "check": "sh ./scripts/run-python.sh -m py_compile main.py"
+    "check": "sh ./scripts/run-python.sh -m py_compile main.py",
+    "test": "sh ./scripts/run-python.sh -m unittest -v test_main"
   }
 }

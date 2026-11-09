@@ -5,6 +5,8 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 APP_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
 HOST="${AI_HOST:-127.0.0.1}"
 
+export UPLOAD_DIR="${UPLOAD_DIR:-$APP_DIR/../api/uploads}"
+
 cd "$APP_DIR"
 
 if [ -f "$APP_DIR/.env.local" ]; then

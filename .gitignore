@@ -83,3 +83,6 @@ Thumbs.db
 !/apps/api/uploads/1781199258750-435084240.webp
 /uploads/*
 !/uploads/.gitkeep
+
+# Generated from the locked MapLibre package before web dev/build.
+/apps/web/public/vendor/maplibre/

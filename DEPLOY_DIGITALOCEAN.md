@@ -41,7 +41,14 @@ baseline):
 docker compose version
 ```
 
-## 3. Configure Nginx
+## 3. Get the source
+
+```bash
+git clone YOUR_REPOSITORY_URL pawsrescue
+cd pawsrescue
+```
+
+## 4. Configure Nginx
 
 Copy the included virtual host and replace the example domain:
 
@@ -61,13 +68,11 @@ Enable HTTPS with Certbot if this hostname does not already have a certificate:
 sudo certbot --nginx -d YOUR_DOMAIN
 ```
 
-## 4. First deploy
+## 5. First deploy
 
 On the Droplet:
 
 ```bash
-git clone YOUR_REPOSITORY_URL pawsrescue
-cd pawsrescue
 cp deploy/.env.production.example .env.production.local
 nano .env.production.local
 chmod +x deploy/deploy.sh
@@ -85,7 +90,13 @@ Set these values in `.env.production.local`:
 - `DB_PASSWORD_NEST`: the Supabase database password.
 - `DB_NAME_NEST`: normally `postgres`.
 - `DB_SSL`: `true`.
-- `DB_SSL_REJECT_UNAUTHORIZED`: `false` for the Supabase pooler.
+- `DB_SSL_REJECT_UNAUTHORIZED`: `true`. If your connection requires a custom CA,
+  set `DB_SSL_CA` to the trusted certificate PEM (literal `\n` for line breaks).
+  Keep server certificate verification enabled.
+- `AI_TRANSFORMERS_MODEL_NAME`: `facebook/dinov2-small` by default. Changing the
+  model or crop settings requires rebuilding stored embeddings.
+- `AI_MATCH_MAX_DISTANCE`: `0.5` initially; this is a retrieval heuristic, not
+  identity confidence.
 - `DB_POOL_MAX`: keep `10` initially.
 - `AI_REQUEST_TIMEOUT_MS`: keep `180000` initially; this caps an AI request at
   three minutes.
@@ -96,14 +107,15 @@ Check deployment with:
 docker compose --env-file .env.production.local -f docker-compose.prod.yml ps
 docker compose --env-file .env.production.local -f docker-compose.prod.yml logs --tail=200
 curl -fsS https://YOUR_DOMAIN/api/health
-cd apps/api && npx mikro-orm migration:list
+docker compose --env-file .env.production.local -f docker-compose.prod.yml exec api node dist/src/scripts/migration-status.js
 ```
 
-The migration list must show the existing migrations as executed. Do not launch
-against an empty database without first creating a proper baseline migration:
-the oldest migration in this repository expects the `lost_pets` table to exist.
+The migration list must show no pending migrations. The baseline creates the
+original table on empty databases; existing installations retain their table and
+data. Historical migrations remain unchanged. Do not run `schema:create` before
+startup migrations, or manually mark migrations applied to an unknown schema.
 
-The deploy command waits up to four minutes for AI, API, and Web health checks.
+The deploy command waits up to ten minutes for AI, API, and Web health checks.
 It exits with an error instead of reporting a successful deployment when a
 container is unhealthy.
 
@@ -111,7 +123,7 @@ Nginx reaches the Web container on `127.0.0.1:3060`. Next.js also listens on
 port `3060` inside Docker, avoiding conflicts and keeping the Web port consistent
 in development, Docker, health checks, and Nginx.
 
-## 5. Updates and rollback
+## 6. Updates and rollback
 
 Deploy an update:
 
@@ -125,7 +137,7 @@ take a Droplet snapshot. To roll back, check out that commit and rerun the deplo
 script. Database migrations need a separately tested down/forward strategy; a
 container rollback does not undo schema changes.
 
-## 6. Backups and operations
+## 7. Backups and operations
 
 - Supabase protects database data according to the backup/PITR options enabled
   on your Supabase plan. Verify those settings rather than assuming they exist.
@@ -134,7 +146,20 @@ container rollback does not undo schema changes.
   backup target.
 - The AI model cache is in `pawsrescue_ai-cache`; it can be rebuilt and does not
   need the same backup priority as uploads.
-- Watch disk, RAM, and CPU alerts in DigitalOcean. AI startup can legitimately
-  take longer, so its health check has a 90-second grace period.
+- Watch disk, RAM, and CPU alerts in DigitalOcean. AI readiness loads weights and validates feature extraction. The first cold
+  download can take several minutes; inspect AI logs if the wait times out.
 - Run only one API replica while migrations execute automatically at startup.
   Move migrations to a one-off release job before scaling API replicas.
+
+## Release checks
+
+`/health` is liveness; the AI container uses `/ready` to verify model loading.
+A healthy stack still needs a smoke test through the public hostname: open the
+map, submit a fictional report and scan a known fixture photo. Verify HTTPS,
+MapTiler origin restrictions and photo backup restoration on the target server.
+The local Next API proxy is disabled in production; Nginx owns `/api/` routing.
+Never enable `API_PROXY_ENABLED` on the public Web service to bypass that boundary.
+
+When using `DATABASE_URL`, configure TLS in the URI as well as `DB_SSL=true`;
+avoid URI options that disable certificate verification. Separate `DB_*` values
+with `DB_SSL_CA` avoid conflicting URI SSL options.
