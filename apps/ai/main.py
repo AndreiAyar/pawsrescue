@@ -43,7 +43,8 @@ HISTOGRAM_BINS = 8
 GRAYSCALE_HISTOGRAM_BINS = 16
 
 DINOV3_MODEL_ALIASES = {"auto", "best", "pawsmatch", "transformers", "dinov3"}
-PIPELINE_MODEL_NAME = f"dinov3-cat-crop-v1:{TRANSFORMERS_MODEL_NAME}"
+MODEL_FAMILY = "dinov2" if "dinov2" in TRANSFORMERS_MODEL_NAME else "dinov3"
+PIPELINE_MODEL_NAME = f"{MODEL_FAMILY}-cat-crop-v1:{TRANSFORMERS_MODEL_NAME}"
 
 app = FastAPI(title="PawsRescue AI Service", version="0.4.0")
 

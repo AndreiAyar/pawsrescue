@@ -7,6 +7,10 @@ HOST="${AI_HOST:-127.0.0.1}"
 
 cd "$APP_DIR"
 
+if [ -f "$APP_DIR/.env.local" ]; then
+  set -- "$@" --env-file "$APP_DIR/.env.local"
+fi
+
 if [ "${1:-}" = "--reload" ]; then
   shift
   exec sh "$SCRIPT_DIR/run-python.sh" \

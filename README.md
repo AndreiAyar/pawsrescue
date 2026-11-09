@@ -16,6 +16,30 @@ Fullstack app for finding pets with the help of AI. 🐈
 Local services: web at http://localhost:3060, docs at http://localhost:3001,
 API at http://localhost:3015, and AI health at http://localhost:8000/health.
 
+### Demo photos and image matching
+
+The API stores uploaded photos in `apps/api/uploads` and requests embeddings
+from the local AI service. Images and embeddings must use the same model as
+future scans. For the demo, `apps/ai/.env.local` contains
+`AI_TRANSFORMERS_MODEL_NAME=facebook/dinov2-small`, a public model that does not
+require Hugging Face credentials. The AI startup script loads this local file.
+Without an override, the service still defaults to DINOv3, which requires access.
+
+Demo replacement photos are stored locally with a `demo-unsplash-` prefix;
+their sources and listing IDs are recorded in `scripts/demo-photo-sources.json`.
+These are representative stock photos, not recovered original pet photos.
+Original pet photos were preserved. Unused document scans were moved out of
+public uploads into `.tmp/demo-repair/archived-document-scans`. The local database
+backup, archive manifest, and repair report are in `.tmp/demo-repair` (ignored by
+Git). An explicit local rollback is available with
+`node .tmp/demo-repair/restore.cjs --restore`; it restores the original image
+references and embeddings and copies archived files back into uploads. It refuses
+to overwrite listings whose image or embedding has changed since the repair.
+
+If the model changes, run `npm run --workspace api embeddings:rebuild` with the AI
+service running before demonstrating scans. This updates all available image
+embeddings, so back up the database first.
+
 # Turborepo starter
 
 This Turborepo starter is maintained by the Turborepo core team.
