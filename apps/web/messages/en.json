@@ -145,13 +145,6 @@
     "resultsTitle": "Matches",
     "openListing": "Open listing",
     "matchPercent": "match",
-    "demoBadge": "DEMO",
-    "demoTitle": "Try the search now",
-    "demoBody": "Click the preloaded photo. We will add it to the form automatically so you can see the lost cat match.",
-    "demoAction": "Click the preloaded photo",
-    "demoSelected": "The demo photo is loaded and ready to search.",
-    "demoSubmit": "Search demo",
-    "demoAlt": "Silver cat in the demo photo",
     "locationTitle": "Cat location on the map",
     "showOnMap": "Show on map",
     "selectedOnMap": "On map"
