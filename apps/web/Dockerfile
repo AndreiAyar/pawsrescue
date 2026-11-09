@@ -7,6 +7,9 @@ COPY apps ./apps
 COPY packages ./packages
 
 RUN npm ci
+ARG NEXT_PUBLIC_MAPTILER_API_KEY
+ENV NEXT_PUBLIC_MAPTILER_API_KEY=$NEXT_PUBLIC_MAPTILER_API_KEY
+
 RUN npm run --workspace web build
 
 FROM node:22-bookworm-slim AS runner

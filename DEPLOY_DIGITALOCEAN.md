@@ -76,6 +76,9 @@ chmod +x deploy/deploy.sh
 
 Set these values in `.env.production.local`:
 
+- `NEXT_PUBLIC_MAPTILER_API_KEY`: your MapTiler browser key, restricted to your
+  production origin. This value is embedded at build time; rebuild the web image
+  after changing it.
 - `DB_HOST_NEST`: Supabase Session pooler hostname.
 - `DB_PORT_NEST`: `5432` for Session mode.
 - `DB_USER_NEST`: normally `postgres.PROJECT_REF`, not only `postgres`.

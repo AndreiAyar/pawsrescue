@@ -59,6 +59,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_MAPTILER_API_KEY: ${NEXT_PUBLIC_MAPTILER_API_KEY:-}
     restart: unless-stopped
     depends_on:
       api:

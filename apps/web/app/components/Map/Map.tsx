@@ -109,7 +109,7 @@ export default function MapView({
   }, [maxPersistedClusterFeatures]);
 
   const zoom = useMemo(() => 5, []);
-  maptilersdk.config.apiKey = "";
+  maptilersdk.config.apiKey = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";
 
   const updatePosition = (lng: number, lat: number) => {
     if (!enableCenterMarker) {
