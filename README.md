@@ -35,6 +35,12 @@ Demo replacement photos are stored locally with a `demo-unsplash-` prefix;
 their sources and listing IDs are recorded in `scripts/demo-photo-sources.json`.
 These are representative stock photos, not recovered original pet photos.
 
+With the API and AI services running, add the eight fictional Timișoara cat
+listings with `node scripts/seed-timisoara-cats.mjs`. The script uploads the
+reviewed photos, generates image embeddings, and skips listings already added.
+Names, locations, photo references, and example.com contacts are recorded in
+`scripts/timisoara-cats.json`. The scan page uses the standard photo upload flow.
+
 If the model changes, run `npm run --workspace api embeddings:rebuild` with the AI
 service running before demonstrating scans. This updates all available image
 embeddings, so back up the database first.

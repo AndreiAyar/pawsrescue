@@ -1,0 +1,85 @@
+{
+  "purpose": "Fictional missing-cat listings for a presentation, using representative stock photos and example.com contacts.",
+  "nameSources": [
+    "https://catine.ro/cele-mai-simpatice-nume-pentru-pisici-cum-iti-poti-numi-mica-felina-40598.html",
+    "https://zonapet.ro/article/nume-pentru-caini-si-pisici",
+    "https://www.bluecross.org.uk/sites/default/files/d8/downloads/Blue-Cross-top-100-pet-cat-names.pdf",
+    "https://namenust.com/good-cat-names/"
+  ],
+  "locationSource": "https://en.wikipedia.org/wiki/List_of_parks_in_Timi%C8%99oara",
+  "photoLicense": "https://unsplash.com/license",
+  "cats": [
+    {
+      "name": "Pufi",
+      "email": "pufi.timisoara@example.com",
+      "description": "A fluffy ginger sweetheart with a cloud-soft tail. Help Pufi find the way home.",
+      "rawLocation": "Near Parcul Rozelor, Cetate",
+      "latitude": 45.74972,
+      "longitude": 21.23111,
+      "photo": "demo-unsplash-1511044568932-338cba0ad803.jpg"
+    },
+    {
+      "name": "Miti",
+      "email": "miti.timisoara@example.com",
+      "description": "A tiny tabby with bright eyes and the sweetest little whiskers. Miti is dearly missed.",
+      "rawLocation": "Near Parcul Botanic, Cetate",
+      "latitude": 45.76,
+      "longitude": 21.22472,
+      "photo": "demo-unsplash-1533743983669-94fa5c4338ec.jpg"
+    },
+    {
+      "name": "Fulg",
+      "email": "fulg.timisoara@example.com",
+      "description": "Snow-white fur, green eyes, and a little pink nose. Our tiny snowflake is missing.",
+      "rawLocation": "Near Parcul Carmen Sylva, Elisabetin",
+      "latitude": 45.74389,
+      "longitude": 21.22306,
+      "photo": "demo-unsplash-1561948955-570b270e7c36.jpg"
+    },
+    {
+      "name": "Mișu",
+      "email": "misu.timisoara@example.com",
+      "description": "A handsome striped kitty with a white chin. Home is missing Mișu's little paws.",
+      "rawLocation": "Near Parcul Regina Maria, Fabric",
+      "latitude": 45.75528,
+      "longitude": 21.2425,
+      "photo": "demo-unsplash-1518791841217-8f162f1e1131.jpg"
+    },
+    {
+      "name": "Mochi",
+      "email": "mochi.timisoara@example.com",
+      "description": "A round little grey fluffball with a button nose. Mochi belongs back in loving arms.",
+      "rawLocation": "Near Parcul Dacia, Dacia",
+      "latitude": 45.76472,
+      "longitude": 21.21722,
+      "photo": "demo-unsplash-1548247416-ec66f4900b2e.jpg"
+    },
+    {
+      "name": "Poppy",
+      "email": "poppy.timisoara@example.com",
+      "description": "A little black-and-white heart-stealer with a pink nose. Please help Poppy get home.",
+      "rawLocation": "Near Parcul Central Anton Scudier, Cetate",
+      "latitude": 45.75139,
+      "longitude": 21.22028,
+      "photo": "demo-unsplash-1514888286974-6c03e2ca1dba.jpg"
+    },
+    {
+      "name": "Nala",
+      "email": "nala.timisoara@example.com",
+      "description": "A golden-eyed ginger beauty with the cutest pink nose. Nala's family misses her.",
+      "rawLocation": "Near Parcul Lidia, Soarelui",
+      "latitude": 45.73333,
+      "longitude": 21.24306,
+      "photo": "demo-unsplash-1573865526739-10659fec78a5.jpg"
+    },
+    {
+      "name": "Kuki",
+      "email": "kuki.timisoara@example.com",
+      "description": "A tiny grey bundle of fluff with a cheeky little tongue. Kuki is missed every day.",
+      "rawLocation": "Near Parcul Clăbucet, Dâmbovița",
+      "latitude": 45.73667,
+      "longitude": 21.20583,
+      "photo": "demo-unsplash-1511275539165-cc46b1ee89bf.jpg"
+    }
+  ]
+}
