@@ -98,7 +98,21 @@ services:
       dockerfile: apps/ai/Dockerfile
     container_name: pawsrescue-ai
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DB_HOST_NEST: db
+      DB_PORT_NEST: 5432
+      DB_USER_NEST: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD_NEST: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME_NEST: ${POSTGRES_DB:-pawsrescue}
+      DB_SSL: "false"
+      UPLOAD_DIR: /shared-uploads
       AI_PORT: 8000
       AI_MODEL_NAME: ${AI_MODEL_NAME:-auto}
       AI_TRANSFORMERS_MODEL_NAME: ${AI_TRANSFORMERS_MODEL_NAME:-facebook/dinov2-small}

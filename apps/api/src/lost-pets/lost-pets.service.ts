@@ -395,49 +395,6 @@ export class LostPetsService {
     return result;
   }
 
-  async setEmbeddingStatus(id: number, status: EmbeddingStatus) {
-    await this.em.getConnection().execute(
-      `update "lost_pets" set "embedding_status" = ?, "updated_at" = now()
-       where "id" = ? and "embedding_status" <> 'ready'`,
-      [status, id],
-    );
-  }
-
-  async processEmbedding(petId: number) {
-    const pet = await this.lostPetsRepository.findOne({ id: petId });
-    // Re-delivery and already rebuilt reports must not run inference again.
-    if (!pet || pet.embeddingStatus === 'ready') return { petId };
-    const imagePaths = (pet.imageUrls ?? []).map((url) =>
-      join(getUploadsDir(), basename(url)),
-    );
-    if (!imagePaths.length) {
-      await this.setEmbeddingStatus(petId, 'none');
-      return { petId };
-    }
-
-    await this.setEmbeddingStatus(petId, 'processing');
-    const result = await this.requestEmbedding(imagePaths);
-    if (!result || result.fallbackUsed) {
-      throw new ServiceUnavailableException('AI embedding is unavailable');
-    }
-    await this.saveEmbeddingForPet(petId, result);
-    return { petId };
-  }
-
-  async recoverPendingEmbeddings() {
-    const rows = await this.em.getConnection().execute<Array<{ id: number }>>(
-      `select "id" from "lost_pets"
-       where "embedding_status" in ('pending', 'processing')
-       order by "updated_at", "id" limit 100`,
-    );
-    for (const { id } of rows) {
-      const job = await this.embeddings.enqueue(id);
-      if ((await job.getState()) === 'failed') {
-        await this.setEmbeddingStatus(id, 'failed');
-      }
-    }
-  }
-
   private getMockMatches(city?: string): MatchResponse['matches'] {
     return this.getMockPets()
       .filter(

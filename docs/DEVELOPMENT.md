@@ -27,7 +27,7 @@ API at http://localhost:3015, and AI health at http://localhost:8000/health.
 ### Demo photos and image matching
 
 The API stores uploaded photos in `apps/api/uploads` and queues embedding jobs
-in Redis. A Nest worker calls the local AI service after the report is saved.
+in Redis. The Python service consumes those jobs and saves vectors directly in Postgres.
 Images and embeddings must use the same model as
 future scans. The default is `facebook/dinov2-small`, a public model that does not require
 Hugging Face credentials. Local Python launch scripts load `apps/ai/.env.local`;
@@ -91,8 +91,8 @@ Check Redis with `npm run redis:check` (expected: `PONG`).
 
 `redis:up` starts Redis in the background and waits for its health check.
 `redis:check` should print `PONG`. `npm run dev` starts the web/docs apps, Nest API
-and Python AI service. Nest automatically starts the BullMQ worker; it does not
-start Redis or Python itself. There is no separate worker terminal to launch.
+and Python AI service. The Python service starts its BullMQ worker automatically;
+there is no extra worker terminal. Nest only adds upload jobs.
 
 The API's local defaults are `REDIS_HOST=127.0.0.1`, `REDIS_PORT=6379` and
 `AI_SERVICE_URL=http://localhost:8000`. Inside Compose, the API uses the service
@@ -190,55 +190,59 @@ consistently to dependencies as well as application imports.
 ## Queued upload processing
 
 ```text
-POST /lost-pets → save photos + report (pending) → BullMQ { petId } → return 201
-worker → Python POST /embed → save vector + ready status
-GET /lost-pets/:id → current embeddingStatus + embeddingInfo
+Nest: save report (pending) → Redis { petId } → return 201
+Python: read job → compute embedding → commit vector + ready → complete job
 ```
 
-The queue contains IDs, never image bytes. Redis must use persistent storage
-and `maxmemory-policy noeviction`; both Compose files configure this. Local
-development also needs Redis running (`docker compose up -d redis`). Its host,
-port and optional password are configured in `apps/api/.env.example`.
+The worker runs inside the Python service, independently of Nest. It reuses the
+same model code as HTTP photo search. CPU inference runs off the asyncio event
+loop so BullMQ can renew its job lock. Scan still returns results through HTTP.
 
-The worker starts after migrations, uses a fresh MikroORM context for each job,
-and limits upload inference to one active job across API replicas. There are
-three attempts with exponential backoff for temporary failures; invalid photos
-fail immediately. Fallback vectors are never marked ready. Final failures are
-visible as `embeddingStatus: failed` on the report. Reports without photos have
-status `none` and do not create jobs.
+Each job has one purpose: save the embedding for an immutable uploaded report.
+A ready report is skipped on redelivery; Python commits the vector before
+acknowledging success. If Python crashes before committing, BullMQ can recover
+the abandoned job and run it again. Restarting Nest does not interrupt Python.
 
-If Redis is unavailable during upload, the saved report stays pending and its
-photos remain intact. Every 30 seconds, and at startup, recovery schedules
-pending/processing reports using stable job IDs. Repeated scheduling does not
-create multiple queued copies. Re-delivery of a ready report skips inference.
-Completed Redis jobs are retained for at most one day/1,000 jobs and failed
-jobs for 1,000 jobs; the report's final status remains in Postgres. Graceful
-shutdown finishes active jobs before closing the producer/database.
+Upload jobs run one at a time across workers. Temporary failures get three
+attempts with exponential backoff; invalid photos fail immediately. Exhausted
+jobs become `failed`. Reports without photos have status `none` and no job.
+At startup and every 30 seconds, Python requeues pending/processing reports
+using stable IDs and reconciles failed jobs. This also covers a report saved
+while Redis was unavailable. Completed Redis jobs are retained for at most
+one day/1,000 jobs; failed jobs for 1,000 jobs.
 
-Scan stays synchronous, including its existing temporary-file cleanup. This
-change adds no notification delivery or automatic matching after uploads.
-`embeddings:rebuild` remains an explicit maintenance command and disables the
-background worker in that process.
+Locally Python reuses DB/Redis settings from `apps/api/.env.development.local`.
+`apps/ai/.env.local` and existing process environment values take precedence.
+Compose passes the database and Redis settings to both services. Python needs
+SELECT/UPDATE access to `lost_pets`; schema migrations remain owned by Nest.
+An empty database may briefly log a recovery error until Nest applies migrations.
+Use `AI_WORKER_ENABLED=false` only when running an HTTP-only AI service.
 
-Runtime migrations disable automatic schema snapshots: Supabase manages other
-schemas in the same database, whose checks must not be compiled into an app
-migration snapshot. Migration SQL and migration history remain authoritative.
+### Integration test
 
-Run `npm run --workspace api test:queue` with Redis and a pgvector database
-available. It uses the configured API development database (or
-`QUEUE_TEST_DATABASE_URL`), creates a randomly named `queue_test_*` schema and
-Redis key prefix, and removes only its own test data. The Redis test port can
-be overridden with `QUEUE_TEST_REDIS_PORT`.
+Install `apps/ai/requirements-worker.txt` into `apps/ai/.venv` (the full AI setup
+already includes it), then run with Redis and a pgvector database available:
 
-The suite runs actual HTTP multipart uploads, migrations twice, real Redis
-workers and Postgres writes. A controlled AI HTTP fixture exercises 12
-simultaneous uploads, independent vectors, deduplication, retry exhaustion,
-invalid/fallback responses, producer disconnection, recovery, worker restart
-and synchronous scan cleanup. Two worker instances verify the shared concurrency
-limit. This isolates queue correctness from model
-accuracy. For actual model validation, run `npm run check:ai -- /absolute/path/to/photo.jpg`
-against the running Python service.
-Set `QUEUE_TEST_REAL_AI_URL=http://localhost:8000` when running `test:queue`
-to also upload a reviewed demo photo through the actual AI model. That optional
-test creates and removes its own file in `apps/api/uploads` so it works with
-the Python service's upload-directory restriction.
+```sh
+npm run --workspace api test:queue
+```
+
+The suite creates a random `queue_test_*` schema and Redis prefix, launches real
+Nest and Python processes, and removes only its own data. Inference is controlled
+to test concurrency, idempotent redelivery, retries and producer recovery.
+It kills Nest with SIGKILL while Python is processing and checks Postgres and
+Redis directly, without restarting Nest first.
+
+With the full ML dependencies and local demo photo installed, also run:
+
+```sh
+QUEUE_TEST_REAL_AI=true npm run --workspace api test:queue
+```
+
+That additional test computes an actual cat embedding and saves it with Nest
+stopped. `QUEUE_TEST_PYTHON` can select a different Python executable, and
+`QUEUE_TEST_REDIS_PORT` can select a separate Redis instance.
+
+Migrations disable automatic schema snapshots to avoid including Supabase's
+managed schemas. `embeddings:rebuild` remains an explicit maintenance command;
+run it with the upload queue drained and backed up first.

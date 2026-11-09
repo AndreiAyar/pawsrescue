@@ -120,9 +120,22 @@ services:
       dockerfile: apps/ai/Dockerfile
     restart: unless-stopped
     depends_on:
+      redis:
+        condition: service_healthy
       uploads-init:
         condition: service_completed_successfully
     environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATABASE_URL: ${DATABASE_URL:-}
+      DB_HOST_NEST: ${DB_HOST_NEST:-}
+      DB_PORT_NEST: ${DB_PORT_NEST:-5432}
+      DB_USER_NEST: ${DB_USER_NEST:-}
+      DB_PASSWORD_NEST: ${DB_PASSWORD_NEST:-}
+      DB_NAME_NEST: ${DB_NAME_NEST:-postgres}
+      DB_SSL: ${DB_SSL:-true}
+      DB_SSL_REJECT_UNAUTHORIZED: ${DB_SSL_REJECT_UNAUTHORIZED:-true}
+      DB_SSL_CA: ${DB_SSL_CA:-}
       AI_PORT: 8000
       AI_MODEL_NAME: ${AI_MODEL_NAME:-auto}
       AI_TRANSFORMERS_MODEL_NAME: ${AI_TRANSFORMERS_MODEL_NAME:-facebook/dinov2-small}

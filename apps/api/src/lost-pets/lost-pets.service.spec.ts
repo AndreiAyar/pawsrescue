@@ -386,58 +386,6 @@ describe('LostPetsService', () => {
       service.match([buildPhoto('/tmp/cat.jpg')]),
     ).rejects.toMatchObject({ status: 503 });
   });
-
-  it('processes a queued report and saves a real embedding as ready', async () => {
-    repository.findOne.mockResolvedValue({
-      ...buildEntity(),
-      embeddingStatus: 'pending',
-      embedding: undefined,
-    });
-    mockEmbedding();
-    await expect(service.processEmbedding(1)).resolves.toEqual({ petId: 1 });
-    expect(execute).toHaveBeenCalledWith(
-      expect.stringContaining('"embedding_status" = \'ready\''),
-      expect.arrayContaining([1]),
-    );
-  });
-
-  it('does not run inference again for a ready or deleted report', async () => {
-    const fetchMock = jest.spyOn(global, 'fetch');
-    repository.findOne
-      .mockResolvedValueOnce(buildEntity())
-      .mockResolvedValueOnce(null);
-    await service.processEmbedding(1);
-    await service.processEmbedding(2);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('does not index fallback vectors from background processing', async () => {
-    repository.findOne.mockResolvedValue({
-      ...buildEntity(),
-      embeddingStatus: 'pending',
-    });
-    mockEmbedding(true);
-    await expect(service.processEmbedding(1)).rejects.toMatchObject({
-      status: 503,
-    });
-    expect(execute).not.toHaveBeenCalledWith(
-      expect.stringContaining('"embedding_status" = \'ready\''),
-      expect.anything(),
-    );
-  });
-
-  it('recovers pending reports and reconciles exhausted jobs', async () => {
-    execute.mockResolvedValueOnce([{ id: 3 }, { id: 4 }]);
-    enqueue
-      .mockResolvedValueOnce({ getState: () => Promise.resolve('waiting') })
-      .mockResolvedValueOnce({ getState: () => Promise.resolve('failed') });
-    await service.recoverPendingEmbeddings();
-    expect(enqueue.mock.calls.slice(-2)).toEqual([[3], [4]]);
-    expect(execute).toHaveBeenCalledWith(
-      expect.stringContaining('"embedding_status" = ?'),
-      ['failed', 4],
-    );
-  });
 });
 
 function buildPhoto(path: string): UploadedPhoto {

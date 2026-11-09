@@ -1,4 +1,6 @@
 import os
+import asyncio
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, List
@@ -42,8 +44,28 @@ MODEL_ALIASES = {"auto", "best", "pawsmatch", "transformers", "dinov3", "dinov2"
 MODEL_FAMILY = "dinov2" if "dinov2" in TRANSFORMERS_MODEL_NAME else "dinov3"
 PIPELINE_MODEL_NAME = f"{MODEL_FAMILY}-cat-crop-v1:{TRANSFORMERS_MODEL_NAME}"
 
-app = FastAPI(title="PawsRescue AI Service", version="0.5.0")
+@asynccontextmanager
+async def lifespan(_app):
+    from worker import run_worker
+    from worker_db import load_worker_env
+
+    load_worker_env()
+
+    stop = asyncio.Event()
+    task = None
+    if os.getenv("AI_WORKER_ENABLED", "true").lower() != "false":
+        task = asyncio.create_task(run_worker(embed_images, stop))
+    try:
+        yield
+    finally:
+        stop.set()
+        if task:
+            await task
+
+
+app = FastAPI(title="PawsRescue AI Service", version="0.5.0", lifespan=lifespan)
 _model_lock = Lock()
+_inference_lock = Lock()
 _ready = False
 Image.MAX_IMAGE_PIXELS = 25_000_000
 
@@ -288,10 +310,20 @@ def ready() -> dict[str, Any]:
 
 @app.post("/embed")
 def embed(payload: EmbedRequest) -> dict[str, Any]:
-    if not 1 <= len(payload.imagePaths) <= 4:
+    return embed_images(payload.imagePaths)
+
+
+def embed_images(image_paths: list[str]) -> dict[str, Any]:
+    # Scan and queued uploads share the same models safely.
+    with _inference_lock:
+        return _embed_images(image_paths)
+
+
+def _embed_images(image_paths: list[str]) -> dict[str, Any]:
+    if not 1 <= len(image_paths) <= 4:
         raise HTTPException(status_code=400, detail="Upload between one and four photos")
 
-    existing_paths = [resolve_image_path(image_path) for image_path in payload.imagePaths]
+    existing_paths = [resolve_image_path(image_path) for image_path in image_paths]
     missing_paths = [str(path) for path in existing_paths if not path.exists()]
 
     if missing_paths:

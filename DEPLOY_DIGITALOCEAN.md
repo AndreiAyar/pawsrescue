@@ -145,8 +145,8 @@ container rollback does not undo schema changes.
   starting the API. No Redis port is published on the host. Preserve this volume
   during updates; `docker compose down` keeps it, while `down -v` deletes it.
   Inspect it with `docker compose --env-file .env.production.local -f docker-compose.prod.yml exec -T redis redis-cli ping`
-  or the corresponding `logs redis` command. The BullMQ worker runs in the API
-  process and starts after migrations.
+  or the corresponding `logs redis` command. The BullMQ worker runs in the Python AI service and writes embeddings
+  directly to Postgres. The API only adds jobs; restarting it does not stop inference.
 - Supabase protects database data according to the backup/PITR options enabled
   on your Supabase plan. Verify those settings rather than assuming they exist.
 - Uploaded photos live in the Docker volume `pawsrescue_shared-uploads`. Droplet

@@ -1,7 +1,5 @@
-fastapi==0.162.2
-starlette==1.10.0
+-r requirements-worker.txt
 uvicorn==0.54.0
-python-dotenv==1.2.4
 numpy==2.4.6
 pillow==13.0.0
 torch==2.15.0

@@ -81,10 +81,10 @@ Next.js and React on the frontend, NestJS for the API, PostgreSQL with pgvector,
 Redis/BullMQ for background upload processing, and a Python service for photo
 matching. The local demo uses DINOv2 Small.
 
-**BullMQ + Redis** handles photo processing in the background, one upload job
-at a time, with retries for temporary failures. Redis persists the queue, and
-the API recovers pending reports after an interruption. Photo searches return
-results directly.
+NestJS saves the report and adds a `{ petId }` job to **BullMQ / Redis**.
+The **Python worker** computes and saves the embedding directly in Postgres,
+then completes the job. Queued uploads keep processing if the API restarts;
+retries skip reports whose embedding is already saved.
 
 #### Start locally
 
@@ -107,11 +107,11 @@ Check Redis at any time with `npm run redis:check` (expected: `PONG`).
 
 Docker must be installed and running. `npm run dev` starts Next.js, NestJS and
 Python; it connects to Redis but does not start it. The BullMQ worker starts
-inside the Nest process. Keep your configured Postgres connection, or start the
+inside the Python service. Keep your configured Postgres connection, or start the
 included local database with `docker compose up -d --wait db`.
 
 Open [localhost:3060/en](http://localhost:3060/en). Uploads save the report and
-queue its embedding; the worker calls Python and stores the vector in Postgres.
+queue its embedding; Python consumes the job and stores the vector in Postgres.
 Scan requests still return their results synchronously.
 
 ```sh
