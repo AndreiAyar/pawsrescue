@@ -3,7 +3,7 @@
 ## Visual Inspiration
 - Pet-friendly, warm, pastel UI with rounded shapes and playful accents.
 - Similar tone to the attached mobile reference (soft colors, friendly icons, rounded cards).
-- Keep the clean structure from the current home page, but soften it with friendly visuals.
+- Keep the clean structure from the current home page, but soften it with friendly visuals, do not go AI route.
 
 ## UI Principles
 - Warm beige base with pastel accents (mint, peach, soft yellow).
@@ -14,7 +14,7 @@
 
 ## Home Page Notes
 - Keep the static map preview (performance + SEO).
-- Add small illustrated accents around stats and “How it works.”
+- Add small illustrated accents around stats and “How it works.”. Very succint.
 - Maintain clear CTAs: Report / Scan / Browse map.
 
 ## Mobile Direction (Future)

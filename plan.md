@@ -9,6 +9,15 @@ Build a simple local MVP on `dev` with four services:
 
 Keep the implementation basic, demo-friendly, and easy to resume in future chats.
 
+## MVP Scope
+- Map with clustered lost pet pins and filters.
+- Create lost pet listing with required fields from LostPetEntity.
+- Image upload and AI similarity search endpoint.
+- Owner edit/recovery via email link.
+- Alerts (initially email) for potential matches.
+- Verification basics (email link, optional phone later).
+- Multi file upload
+
 ## Working Rules
 - Work slice by slice, not all-at-once.
 - After each meaningful slice:
