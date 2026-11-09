@@ -65,6 +65,8 @@ const db_config = defineConfig({
   entitiesTs: ['src/**/*.entity.ts'],
   debug: process.env.NODE_ENV !== 'production',
   migrations: {
+    // Runtime migrations must not snapshot Supabase's managed auth/storage schemas.
+    snapshot: false,
     path: 'dist/src/migrations',
     pathTs: 'src/migrations',
     tableName: 'mikro_orm_migrations',

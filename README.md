@@ -78,7 +78,52 @@ help or have found something that needs fixing.
 ### Development
 
 Next.js and React on the frontend, NestJS for the API, PostgreSQL with pgvector,
-and a Python service for photo matching. The local demo uses DINOv2 Small.
+Redis/BullMQ for background upload processing, and a Python service for photo
+matching. The local demo uses DINOv2 Small.
+
+**BullMQ + Redis** handles photo processing in the background, one upload job
+at a time, with retries for temporary failures. Redis persists the queue, and
+the API recovers pending reports after an interruption. Photo searches return
+results directly.
+
+#### Start locally
+
+After the [first-time setup](docs/DEVELOPMENT.md#local-development), start Redis
+with Docker Compose and run the applications on your machine:
+
+```sh
+npm run dev:local
+```
+
+With Docker Desktop running, this starts Redis, waits for its health check,
+then starts the applications through Turbo. The equivalent separate commands are:
+
+```sh
+npm run redis:up
+npm run dev
+```
+
+Check Redis at any time with `npm run redis:check` (expected: `PONG`).
+
+Docker must be installed and running. `npm run dev` starts Next.js, NestJS and
+Python; it connects to Redis but does not start it. The BullMQ worker starts
+inside the Nest process. Keep your configured Postgres connection, or start the
+included local database with `docker compose up -d --wait db`.
+
+Open [localhost:3060/en](http://localhost:3060/en). Uploads save the report and
+queue its embedding; the worker calls Python and stores the vector in Postgres.
+Scan requests still return their results synchronously.
+
+```sh
+npm run redis:stop             # stop Redis; preserve queue data
+docker compose logs -f redis   # inspect Redis logs
+```
+
+Redis uses a persistent `redis-data` volume, append-only storage, a health check,
+and `noeviction` so queue keys are not evicted. Its development port is bound to
+localhost. For [development without Docker](docs/DEVELOPMENT.md#redis-without-docker-on-macos),
+run Redis natively. To run the whole stack in containers instead, configure the
+root `.env` from `.env.example` and run `npm run docker:up`.
 
 [Local setup and commands](docs/DEVELOPMENT.md) ·
 [Deployment](DEPLOY_DIGITALOCEAN.md)

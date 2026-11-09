@@ -3,8 +3,11 @@
 1. Install Node.js 22.12+ and Python 3.11–3.13.
 2. Run `npm ci`, then `npm run --workspace ai setup`. To choose a Python
    interpreter explicitly, use `PYTHON_BIN=python3.11 npm run --workspace ai setup`.
-3. Start PostgreSQL with pgvector installed. With Docker installed, run
-   `docker compose up -d db redis`. Enable the extension in your development database
+3. Start Redis and PostgreSQL with pgvector installed. With Docker installed and
+   running, use `docker compose up -d --wait db redis`. If your Postgres database
+   is already hosted elsewhere, start only Redis with `npm run redis:up`.
+   See [native Redis on macOS](#redis-without-docker-on-macos) if Docker is unavailable.
+   Enable the extension in your development database
    with `CREATE EXTENSION IF NOT EXISTS vector;` if your database role cannot
    create extensions itself.
 4. Copy `apps/api/.env.example` to `apps/api/.env.development.local` and configure
@@ -14,7 +17,9 @@
    `NEXT_PUBLIC_MAPTILER_API_KEY` to your own MapTiler browser key. Restrict it to
    your allowed origins in MapTiler. For AI model settings, copy
    `apps/ai/.env.example` to `apps/ai/.env.local`.
-6. Run `npm run dev` from the repository root.
+6. With Docker running, use `npm run dev:local` from the repository root. This
+   starts Redis first and then the apps through Turbo. If you started Redis
+   natively instead, use `npm run dev`.
 
 Local services: web at http://localhost:3060, docs at http://localhost:3001,
 API at http://localhost:3015, and AI health at http://localhost:8000/health.
@@ -64,6 +69,83 @@ Keep credentials in ignored local environment files. Only sanitized
 are runtime data, not application source.
 
 See [DigitalOcean deployment](../DEPLOY_DIGITALOCEAN.md) for production setup.
+
+## Redis startup and operations
+
+Use the Redis service in `docker-compose.yml` for repeatable local development,
+while running the application code natively for fast reloads:
+
+```sh
+npm run dev:local
+```
+
+Install [Docker Desktop for Mac](https://docs.docker.com/desktop/setup/install/mac-install/)
+and open it before using this command. Verify the engine is ready with
+`docker info` and Compose is available with `docker compose version`.
+Docker Desktop does not require a Docker Hub login for this local workflow.
+
+`dev:local` runs `npm run redis:up && npm run dev`: Redis must become healthy
+before Turbo starts the applications. You can still run these as two separate
+commands, in that order. Running `npx turbo dev` separately is unnecessary.
+Check Redis with `npm run redis:check` (expected: `PONG`).
+
+`redis:up` starts Redis in the background and waits for its health check.
+`redis:check` should print `PONG`. `npm run dev` starts the web/docs apps, Nest API
+and Python AI service. Nest automatically starts the BullMQ worker; it does not
+start Redis or Python itself. There is no separate worker terminal to launch.
+
+The API's local defaults are `REDIS_HOST=127.0.0.1`, `REDIS_PORT=6379` and
+`AI_SERVICE_URL=http://localhost:8000`. Inside Compose, the API uses the service
+names `redis:6379` and `http://ai:8000` instead of localhost. Database settings
+remain in `apps/api/.env.development.local`; using Redis locally does not
+require replacing an existing hosted Postgres connection.
+
+```sh
+docker compose ps redis
+docker compose logs -f redis
+npm run redis:stop
+```
+
+Stopping the applications does not stop Redis. `redis:stop` stops the Redis
+container and preserves its volume. With the Docker engine running, the
+`unless-stopped` restart policy recovers a running service after an engine
+restart; manually stopped services need `redis:up` again. This does not install
+or start Docker itself.
+
+Both Compose files enable append-only persistence, mount `redis-data`, and use
+`maxmemory-policy noeviction`. Development exposes Redis only on localhost;
+production exposes no Redis host port. A Nest process connects to the configured
+service, just as it connects to Postgres. Deployment starts Redis as its own
+service. Larger deployments can use a managed Redis service with the same
+durability and BullMQ compatibility requirements.
+
+Do not run Docker Redis and a native Redis process on the same host port.
+Switching between them does not automatically move queue data between their
+storage directories; let pending work finish before switching. Postgres keeps
+the report status independently of Redis job history.
+
+### Redis without Docker on macOS
+
+Install Redis using Homebrew, then run it in a separate terminal with queue
+persistence enabled:
+
+```sh
+brew install redis
+mkdir -p apps/api/.tmp/redis
+redis-server --bind 127.0.0.1 --port 6379 \
+  --appendonly yes --maxmemory-policy noeviction \
+  --dir "$PWD/apps/api/.tmp/redis"
+```
+
+Run those commands from the repository root. In another terminal, confirm
+`redis-cli -h 127.0.0.1 -p 6379 ping` prints `PONG`, then run `npm run dev`.
+The data directory is ignored by Git. A native Redis installation can also be
+managed by `brew services` after configuring its Redis config with the same
+persistence and eviction settings. The `npm run redis:*` helpers target Docker;
+use `redis-cli` to inspect a native installation.
+
+Official references: [Redis on Docker](https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/docker/)
+and [Redis on macOS](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/install-redis-on-mac-os/).
 
 ## Full local Docker stack
 
@@ -137,6 +219,10 @@ Scan stays synchronous, including its existing temporary-file cleanup. This
 change adds no notification delivery or automatic matching after uploads.
 `embeddings:rebuild` remains an explicit maintenance command and disables the
 background worker in that process.
+
+Runtime migrations disable automatic schema snapshots: Supabase manages other
+schemas in the same database, whose checks must not be compiled into an app
+migration snapshot. Migration SQL and migration history remain authoritative.
 
 Run `npm run --workspace api test:queue` with Redis and a pgvector database
 available. It uses the configured API development database (or

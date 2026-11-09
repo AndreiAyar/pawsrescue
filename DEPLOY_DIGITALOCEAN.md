@@ -29,7 +29,7 @@ The Torch image and model cache are much heavier than the web and API services.
 2. Enable DigitalOcean backups.
 3. Configure the VPS firewall to allow inbound `22/tcp` from your own IP only,
    plus `80/tcp` and `443/tcp` from all addresses. Do not expose
-   `3060`, `3015`, `5432`, or `8000`.
+   `3060`, `3015`, `5432`, `6379`, or `8000`.
 4. Add a DNS `A` record for the production hostname pointing to the Droplet IP.
 5. Install Docker Engine and the Docker Compose plugin from Docker's official
    Ubuntu repository.
@@ -139,6 +139,14 @@ container rollback does not undo schema changes.
 
 ## 7. Backups and operations
 
+- Redis runs as its own Compose service with append-only persistence in
+  `pawsrescue_redis-data`; the API connects to `redis:6379` over the internal
+  network. The deploy command starts it and waits for its health check before
+  starting the API. No Redis port is published on the host. Preserve this volume
+  during updates; `docker compose down` keeps it, while `down -v` deletes it.
+  Inspect it with `docker compose --env-file .env.production.local -f docker-compose.prod.yml exec -T redis redis-cli ping`
+  or the corresponding `logs redis` command. The BullMQ worker runs in the API
+  process and starts after migrations.
 - Supabase protects database data according to the backup/PITR options enabled
   on your Supabase plan. Verify those settings rather than assuming they exist.
 - Uploaded photos live in the Docker volume `pawsrescue_shared-uploads`. Droplet
