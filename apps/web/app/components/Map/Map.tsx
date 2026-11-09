@@ -10,9 +10,7 @@ import { createMapLibreGlMapController } from "@maptiler/geocoding-control/mapli
 import "@maptiler/geocoding-control/style.css";
 import { createClusterCache } from "./clusterCache";
 import { getTileRequestForBounds } from "./clusterTiles";
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
-const apiBase = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
-const isProd = process.env.NODE_ENV === "production";
+const apiBase = "/api";
 const BBOX_PRECISION = 1e5;
 const BBOX_PADDING_FACTOR = 0.2;
 const MAX_CACHED_COVERAGE_PER_ZOOM = 64;
@@ -24,6 +22,8 @@ type MapProps = {
     street?: string;
     city?: string;
     label: string;
+    latitude?: number;
+    longitude?: number;
   }) => void;
   locateLabel?: string;
   locatingLabel?: string;
@@ -33,11 +33,19 @@ type MapProps = {
   onLocateRequest?: () => void;
   onLocateError?: (error: GeolocationPositionError) => void;
   showLocateButton?: boolean;
+  showSearchControl?: boolean;
   enableCenterMarker?: boolean;
   maxReverseGeocodeRequests?: number;
   persistClusterFeatures?: boolean;
   maxPersistedClusterFeatures?: number;
   useTileClusters?: boolean;
+  listingHrefBase?: string | null;
+  openListingLabel?: string;
+  focusLocation?: {
+    latitude: number;
+    longitude: number;
+    label?: string;
+  } | null;
 };
 
 type GeoJSONData = FeatureCollection<Geometry> | Feature<Geometry> | Geometry;
@@ -53,21 +61,28 @@ export default function MapView({
   onLocateRequest,
   onLocateError,
   showLocateButton = true,
+  showSearchControl = true,
   enableCenterMarker = false,
   maxReverseGeocodeRequests = 25,
   persistClusterFeatures = false,
   maxPersistedClusterFeatures = 10000,
   useTileClusters = false,
+  listingHrefBase = null,
+  openListingLabel = "Open listing",
+  focusLocation = null,
 }: MapProps) {
   const [mapController, setMapController] = useState<
     ReturnType<typeof createMapLibreGlMapController> | undefined
   >(undefined);
   const [currentPosition, setCurrentPosition] = useState({ lng: 0, lat: 0 });
   const [locating, setLocating] = useState(false);
+  const focusLatitude = focusLocation?.latitude;
+  const focusLongitude = focusLocation?.longitude;
 
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<maptilersdk.Marker | null>(null);
   const userMarkerRef = useRef<maptilersdk.Marker | null>(null);
+  const focusMarkerRef = useRef<maptilersdk.Marker | null>(null);
   const map = useRef<maptilersdk.Map | null>(null);
   const intialPosRef = useRef({ lang: 26.102, lat: 44.435 });
   const geocodeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,7 +101,7 @@ export default function MapView({
       paddingFactor: BBOX_PADDING_FACTOR,
       maxCoveragePerZoom: MAX_CACHED_COVERAGE_PER_ZOOM,
       maxFeatureCount: maxPersistedClusterFeatures,
-    })
+    }),
   );
 
   useEffect(() => {
@@ -94,7 +109,7 @@ export default function MapView({
   }, [maxPersistedClusterFeatures]);
 
   const zoom = useMemo(() => 5, []);
-  maptilersdk.config.apiKey = "";
+  maptilersdk.config.apiKey = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "";
 
   const updatePosition = (lng: number, lat: number) => {
     if (!enableCenterMarker) {
@@ -106,24 +121,18 @@ export default function MapView({
 
   const makeClustersUrl = (bbox: string, zoomLevel: number) => {
     const normalizedZoom = Math.max(0, Math.floor(zoomLevel));
-    if (isProd && apiBase) {
-      return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
-    }
-    return `/api/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
+    return `${apiBase}/lost-pets/clusters?bbox=${bbox}&zoom=${normalizedZoom}`;
   };
 
   const makeTileClustersUrl = (
     zoomLevel: number,
     x: number,
     y: number,
-    buffer: number
+    buffer: number,
   ) => {
     const normalizedZoom = Math.max(0, Math.floor(zoomLevel));
     const bufferParam = buffer > 1 ? `?buffer=${buffer}` : "";
-    if (isProd && apiBase) {
-      return `${apiBase}/lost-pets/clusters/tile/${normalizedZoom}/${x}/${y}${bufferParam}`;
-    }
-    return `/api/lost-pets/clusters/tile/${normalizedZoom}/${x}/${y}${bufferParam}`;
+    return `${apiBase}/lost-pets/clusters/tile/${normalizedZoom}/${x}/${y}${bufferParam}`;
   };
 
   const refreshClusters = async (zoomLevel?: number) => {
@@ -171,7 +180,7 @@ export default function MapView({
             tileRequest.z,
             tileRequest.x,
             tileRequest.y,
-            tileRequest.buffer
+            tileRequest.buffer,
           )
         : makeClustersUrl(bboxString, normalizedZoom);
       if (!clustersUrl) {
@@ -211,7 +220,7 @@ export default function MapView({
         Array.isArray(incoming.features)
       ) {
         source.setData(
-          cacheRef.current.upsertFeatures(normalizedZoom, incoming.features)
+          cacheRef.current.upsertFeatures(normalizedZoom, incoming.features),
         );
         return;
       }
@@ -251,7 +260,7 @@ export default function MapView({
       try {
         const res = await fetch(
           `https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${maptilersdk.config.apiKey}`,
-          { signal: controller.signal }
+          { signal: controller.signal },
         );
         if (!res.ok) {
           return;
@@ -266,12 +275,12 @@ export default function MapView({
 
         const features = data.features ?? [];
         const address = features.find((feature) =>
-          feature.place_type?.includes("address")
+          feature.place_type?.includes("address"),
         );
         const place = features.find((feature) =>
           feature.place_type?.some((type) =>
-            ["place", "locality", "municipality"].includes(type)
-          )
+            ["place", "locality", "municipality"].includes(type),
+          ),
         );
 
         const street =
@@ -282,7 +291,13 @@ export default function MapView({
           features[0]?.place_name ||
           "";
 
-        onLocationChange({ street, city, label });
+        onLocationChange({
+          street,
+          city,
+          label,
+          latitude: lat,
+          longitude: lng,
+        });
       } catch (error) {
         if ((error as { name?: string }).name === "AbortError") {
           return;
@@ -333,9 +348,47 @@ export default function MapView({
       if (map.current) {
         map.current.remove();
         map.current = null;
+        focusMarkerRef.current = null;
       }
     };
   }, [intialPosRef?.current?.lang, intialPosRef?.current?.lat]);
+
+  useEffect(() => {
+    if (
+      !map.current ||
+      typeof focusLatitude !== "number" ||
+      typeof focusLongitude !== "number" ||
+      !Number.isFinite(focusLatitude) ||
+      !Number.isFinite(focusLongitude)
+    ) {
+      focusMarkerRef.current?.remove();
+      focusMarkerRef.current = null;
+      return;
+    }
+
+    const coordinates: [number, number] = [focusLongitude, focusLatitude];
+
+    if (!focusMarkerRef.current) {
+      const markerElement = document.createElement("div");
+      markerElement.style.width = "24px";
+      markerElement.style.height = "24px";
+      markerElement.style.borderRadius = "999px";
+      markerElement.style.background = "#f59e0b";
+      markerElement.style.border = "4px solid #ffffff";
+      markerElement.style.boxShadow =
+        "0 0 0 6px rgba(245,158,11,0.28), 0 12px 24px -10px rgba(15,23,42,0.65)";
+
+      focusMarkerRef.current = new maptilersdk.Marker({
+        element: markerElement,
+      })
+        .setLngLat(coordinates)
+        .addTo(map.current);
+    } else {
+      focusMarkerRef.current.setLngLat(coordinates);
+    }
+
+    map.current.easeTo({ center: coordinates, zoom: 14, duration: 700 });
+  }, [focusLatitude, focusLongitude]);
 
   useEffect(() => {
     if (!map.current) {
@@ -374,7 +427,15 @@ export default function MapView({
             750,
             "#f28cb1",
           ],
-          "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            20,
+            100,
+            30,
+            750,
+            40,
+          ],
         },
       });
 
@@ -620,17 +681,19 @@ export default function MapView({
             : currentZoom + 2;
         const nextZoom = Math.min(
           Math.max(targetZoom, currentZoom + 1),
-          map.current.getMaxZoom()
+          map.current.getMaxZoom(),
         );
-        const coords = (clusterFeature.geometry as Point)
-          .coordinates as [number, number];
+        const coords = (clusterFeature.geometry as Point).coordinates as [
+          number,
+          number,
+        ];
         map.current.easeTo({
           center: coords,
           zoom: nextZoom,
         });
       });
 
-      map.current.on("click", "unclustered-point", (event) => {
+      const handlePetClick = (event: maptilersdk.MapLayerMouseEvent) => {
         if (!map.current || !event.features?.length) {
           return;
         }
@@ -638,11 +701,21 @@ export default function MapView({
         if (!feature || feature.geometry.type !== "Point") {
           return;
         }
-        const { name, type } = feature.properties ?? {};
+        const { id, name, type } = feature.properties ?? {};
         const coords = (feature.geometry as Point).coordinates as [
           number,
           number,
         ];
+        const petId =
+          typeof id === "number"
+            ? id
+            : typeof id === "string"
+              ? Number.parseInt(id, 10)
+              : NaN;
+        const listingHref =
+          listingHrefBase && Number.isFinite(petId)
+            ? `${listingHrefBase}/${petId}`
+            : null;
         const avatar =
           type === "cat"
             ? "🐱"
@@ -668,9 +741,11 @@ export default function MapView({
               </div>
             </div>
             <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
-              <span style="font-size:11px;color:#7c6f56;background:#fef3c7;border-radius:999px;padding:4px 8px;border:1px solid #f7e2a7;letter-spacing:0.06em;text-transform:uppercase;">
-                tap for details
-              </span>
+              ${
+                listingHref
+                  ? `<a href="${listingHref}" style="display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f172a;background:#fde68a;border-radius:999px;padding:8px 12px;border:1px solid #f59e0b;letter-spacing:0.06em;text-transform:uppercase;text-decoration:none;">${openListingLabel}</a>`
+                  : `<span style="font-size:11px;color:#7c6f56;background:#fef3c7;border-radius:999px;padding:4px 8px;border:1px solid #f7e2a7;letter-spacing:0.06em;text-transform:uppercase;">details unavailable</span>`
+              }
             </div>
           </div>
         `;
@@ -679,7 +754,12 @@ export default function MapView({
           .setLngLat(coords)
           .setHTML(html)
           .addTo(map.current);
-      });
+      };
+
+      map.current.on("click", "unclustered-point", handlePetClick);
+      map.current.on("click", "unclustered-avatar", handlePetClick);
+      map.current.on("click", "unclustered-label", handlePetClick);
+      map.current.on("click", "unclustered-ring", handlePetClick);
 
       map.current.on("mouseenter", "clusters", () => {
         if (map.current) {
@@ -697,6 +777,36 @@ export default function MapView({
         }
       });
       map.current.on("mouseleave", "unclustered-point", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "";
+        }
+      });
+      map.current.on("mouseenter", "unclustered-avatar", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "pointer";
+        }
+      });
+      map.current.on("mouseleave", "unclustered-avatar", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "";
+        }
+      });
+      map.current.on("mouseenter", "unclustered-label", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "pointer";
+        }
+      });
+      map.current.on("mouseleave", "unclustered-label", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "";
+        }
+      });
+      map.current.on("mouseenter", "unclustered-ring", () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = "pointer";
+        }
+      });
+      map.current.on("mouseleave", "unclustered-ring", () => {
         if (map.current) {
           map.current.getCanvas().style.cursor = "";
         }
@@ -781,7 +891,7 @@ export default function MapView({
         }
         setLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000 },
     );
   };
 
@@ -850,23 +960,22 @@ export default function MapView({
   return (
     <div className={`relative h-full w-full ${className}`}>
       <div className="geocoding absolute left-4 top-4 z-10 flex items-start gap-2">
-        {mapController && (
+        {showSearchControl && mapController && (
           <GeocodingControl
             apiKey={maptilersdk.config.apiKey}
             mapController={mapController}
             onSelect={(selected) => {
               const feature = selected?.feature;
-              if (feature?.geometry?.type === "Point" && markerRef.current) {
+              if (feature?.geometry?.type === "Point") {
                 const [lng, lat] = feature.geometry.coordinates;
                 if (typeof lng === "number" && typeof lat === "number") {
-                  //Skip for the moment
-                  //   markerRef.current.setLngLat([lng, lat]);
-                  //   // Optionally center the map on the new location
-                  //   map.current?.easeTo({
-                  //     center: [lng, lat],
-                  //     zoom: 15,
-                  //     duration: 1000
-                  //   });
+                  updatePosition(lng, lat);
+                  map.current?.easeTo({
+                    center: [lng, lat],
+                    zoom: Math.max(map.current?.getZoom() ?? 0, 15),
+                    duration: 700,
+                  });
+                  triggerReverseGeocode(lng, lat);
                 }
               }
             }}

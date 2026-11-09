@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+.next
+dist
+coverage
+.turbo
+.git
+.DS_Store
+.env
+.env.*
+!.env.example
+!apps/*/.env.example
+TECHNICAL_PROGRESS.md
+apps/ai/__pycache__
+apps/ai/.pytest_cache
+apps/ai/.venv

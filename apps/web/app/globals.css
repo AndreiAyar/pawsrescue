@@ -7,6 +7,8 @@ body {
 }
 
 :root {
+  --font-body: "Avenir Next", "Segoe UI", Arial, sans-serif;
+  --font-display: "Trebuchet MS", "Avenir Next", "Segoe UI", Arial, sans-serif;
   --sand: #f3f0e8;
   --peach: #f6c7a8;
   --mint: #bfe7d6;
@@ -27,9 +29,21 @@ body {
 .bg-warm-texture {
   background-color: var(--sand);
   background-image:
-    radial-gradient(1200px 600px at 20% -10%, rgba(246, 199, 168, 0.42), transparent 60%),
-    radial-gradient(900px 500px at 90% 10%, rgba(191, 231, 214, 0.38), transparent 55%),
-    radial-gradient(700px 520px at 10% 90%, rgba(245, 228, 166, 0.42), transparent 55%),
+    radial-gradient(
+      1200px 600px at 20% -10%,
+      rgba(246, 199, 168, 0.42),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 90% 10%,
+      rgba(191, 231, 214, 0.38),
+      transparent 55%
+    ),
+    radial-gradient(
+      700px 520px at 10% 90%,
+      rgba(245, 228, 166, 0.42),
+      transparent 55%
+    ),
     repeating-linear-gradient(
       45deg,
       rgba(255, 255, 255, 0.22),

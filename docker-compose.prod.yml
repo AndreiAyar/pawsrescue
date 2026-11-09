@@ -1,0 +1,133 @@
+name: pawsrescue
+
+services:
+  uploads-init:
+    image: alpine:3.21
+    command: ["sh", "-c", "chown -R 1000:1000 /shared-uploads"]
+    user: root
+    volumes:
+      - shared-uploads:/shared-uploads
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      uploads-init:
+        condition: service_completed_successfully
+      ai:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3015
+      DATABASE_URL: ${DATABASE_URL:-}
+      DB_HOST_NEST: ${DB_HOST_NEST:-}
+      DB_PORT_NEST: ${DB_PORT_NEST:-5432}
+      DB_USER_NEST: ${DB_USER_NEST:-}
+      DB_PASSWORD_NEST: ${DB_PASSWORD_NEST:-}
+      DB_NAME_NEST: ${DB_NAME_NEST:-postgres}
+      DB_SSL: ${DB_SSL:-true}
+      DB_SSL_REJECT_UNAUTHORIZED: ${DB_SSL_REJECT_UNAUTHORIZED:-false}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      AI_SERVICE_URL: http://ai:8000
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-180000}
+      USE_MOCK_DATA: "false"
+      UPLOAD_DIR: /shared-uploads
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    ports:
+      - "127.0.0.1:3015:3015"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3015/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - shared-uploads:/shared-uploads
+    networks:
+      - internal
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_MAPTILER_API_KEY: ${NEXT_PUBLIC_MAPTILER_API_KEY:-}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3060
+      HOSTNAME: 0.0.0.0
+      API_URL: http://api:3015
+    ports:
+      - "127.0.0.1:3060:3060"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3060/ro').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - internal
+
+  ai:
+    build:
+      context: .
+      dockerfile: apps/ai/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      uploads-init:
+        condition: service_completed_successfully
+    environment:
+      AI_PORT: 8000
+      AI_MODEL_NAME: ${AI_MODEL_NAME:-auto}
+      AI_OFFLINE_MODEL_LOAD: ${AI_OFFLINE_MODEL_LOAD:-false}
+      AI_TARGET_EMBEDDING_DIM: ${AI_TARGET_EMBEDDING_DIM:-1024}
+      AI_CAT_DETECTION_THRESHOLD: ${AI_CAT_DETECTION_THRESHOLD:-0.65}
+      AI_CAT_CROP_PADDING: ${AI_CAT_CROP_PADDING:-0.08}
+      AI_CAT_CROP_WEIGHT: ${AI_CAT_CROP_WEIGHT:-0.8}
+      UPLOAD_DIR: /shared-uploads
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    volumes:
+      - shared-uploads:/shared-uploads
+      - ai-cache:/home/appuser/.cache
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  ai-cache:
+  shared-uploads:

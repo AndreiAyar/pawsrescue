@@ -10,8 +10,8 @@ import { ConfigModule } from '@nestjs/config';
   imports: [
     MikroOrmModule.forRoot(db_config),
     ConfigModule.forRoot({
-      envFilePath: ['.env.development.local', '.env.development'],
-      // isGlobal: true,
+      envFilePath: ['.env.development.local', '.env.development', '.env'],
+      isGlobal: true,
     }),
     LostPetsModule,
   ],

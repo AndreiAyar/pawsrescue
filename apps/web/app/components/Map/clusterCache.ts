@@ -69,22 +69,29 @@ export const createClusterCache = ({
     if (!bounds) {
       return null;
     }
-    const raw = bounds.toArray().flat();
-    const width = raw[2] - raw[0];
-    const height = raw[3] - raw[1];
+    const coordinates = bounds.toArray();
+    const southwest = coordinates[0];
+    const northeast = coordinates[1];
+    if (!southwest || !northeast) {
+      return null;
+    }
+    const [west, south] = southwest;
+    const [east, north] = northeast;
+    const width = east - west;
+    const height = north - south;
     const padX = width * paddingFactor;
     const padY = height * paddingFactor;
     const padded: BBox = [
-      floorToPrecision(clamp(raw[0] - padX, -180, 180)),
-      floorToPrecision(clamp(raw[1] - padY, -90, 90)),
-      ceilToPrecision(clamp(raw[2] + padX, -180, 180)),
-      ceilToPrecision(clamp(raw[3] + padY, -90, 90)),
+      floorToPrecision(clamp(west - padX, -180, 180)),
+      floorToPrecision(clamp(south - padY, -90, 90)),
+      ceilToPrecision(clamp(east + padX, -180, 180)),
+      ceilToPrecision(clamp(north + padY, -90, 90)),
     ];
     const fallback: BBox = [
-      floorToPrecision(clamp(raw[0], -180, 180)),
-      floorToPrecision(clamp(raw[1], -90, 90)),
-      ceilToPrecision(clamp(raw[2], -180, 180)),
-      ceilToPrecision(clamp(raw[3], -90, 90)),
+      floorToPrecision(clamp(west, -180, 180)),
+      floorToPrecision(clamp(south, -90, 90)),
+      ceilToPrecision(clamp(east, -180, 180)),
+      ceilToPrecision(clamp(north, -90, 90)),
     ];
     const bbox =
       padded[0] < padded[2] && padded[1] < padded[3] ? padded : fallback;
@@ -104,8 +111,12 @@ export const createClusterCache = ({
     let merged = bbox;
     let index = 0;
     while (index < list.length) {
-      if (bboxOverlaps(list[index], merged)) {
-        merged = mergeBbox(list[index], merged);
+      const current = list[index];
+      if (!current) {
+        break;
+      }
+      if (bboxOverlaps(current, merged)) {
+        merged = mergeBbox(current, merged);
         list.splice(index, 1);
         index = 0;
         continue;
@@ -115,19 +126,14 @@ export const createClusterCache = ({
     list.push(merged);
     if (list.length > maxCoveragePerZoom) {
       list.sort(
-        (a, b) =>
-          (b[2] - b[0]) * (b[3] - b[1]) -
-          (a[2] - a[0]) * (a[3] - a[1])
+        (a, b) => (b[2] - b[0]) * (b[3] - b[1]) - (a[2] - a[0]) * (a[3] - a[1]),
       );
       list.length = maxCoveragePerZoom;
     }
     coverageByZoom.set(zoomLevel, list);
   };
 
-  const upsertFeatures = (
-    zoomLevel: number,
-    features: Feature<Geometry>[]
-  ) => {
+  const upsertFeatures = (zoomLevel: number, features: Feature<Geometry>[]) => {
     const featureMap = featuresByZoom.get(zoomLevel) ?? new Map();
     const featureOrder = orderByZoom.get(zoomLevel) ?? [];
 
@@ -163,7 +169,7 @@ export const createClusterCache = ({
 
   const applyToSource = (
     zoomLevel: number,
-    source: maptilersdk.GeoJSONSource
+    source: maptilersdk.GeoJSONSource,
   ) => {
     const featureMap = featuresByZoom.get(zoomLevel);
     if (!featureMap || featureMap.size === 0) {

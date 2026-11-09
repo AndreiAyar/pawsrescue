@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { LostPetEntity } from './lost-pets.entity';
@@ -12,28 +13,440 @@ import Supercluster from 'supercluster';
 import { ClusteringResult, PetFeature } from './types';
 import { tileToBbox } from './geo-tiles';
 import { getMockClusters } from './mock-clusters';
+import { existsSync } from 'fs';
+import { basename, join } from 'path';
+import { getUploadsDir, UPLOADS_ROUTE_PREFIX } from '../uploads/upload-config';
+import { UploadedPhoto } from '../uploads/uploaded-photo.type';
 
-const MOCK_DATA = true;
+const VECTOR_DIMENSIONS = 1024;
+
+type EmbeddingResult = {
+  embedding: number[];
+  model: string;
+  fallbackUsed: boolean;
+  warning: string | null;
+};
+
+type AiEmbeddingResponse = {
+  detail?: string;
+  model?: string;
+  embedding?: number[];
+  fallbackUsed?: boolean;
+  warning?: string;
+};
+
+type PetResponse = {
+  id: number;
+  name: string;
+  type: string;
+  email: string;
+  phone: string | null;
+  description: string | null;
+  city: string | null;
+  rawLocation: string | null;
+  latitude: number;
+  longitude: number;
+  imageUrls: string[];
+  embeddingInfo: {
+    model: string;
+    fallbackUsed: boolean;
+    warning: string | null;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type NormalizablePet = {
+  id: number;
+  name: string | null;
+  type: LostPetEntity['type'] | null;
+  email: string | null;
+  phone?: string | null;
+  description?: string | null;
+  city?: string | null;
+  rawLocation?: string | null;
+  latitude: number;
+  longitude: number;
+  imageUrls?: string[] | null;
+  embedding?: string | null;
+  embeddingModel?: string | null;
+  embeddingFallbackUsed?: boolean | null;
+  embeddingWarning?: string | null;
+  createdAt: Date;
+  updatedAt: Date | null;
+};
+
+type MatchResponse = {
+  mode: 'mock' | 'real';
+  queryEmbedding: {
+    model: string;
+    fallbackUsed: boolean;
+    warning: string | null;
+  } | null;
+  matches: Array<{
+    id: number;
+    name: string;
+    type: string;
+    city: string | null;
+    imageUrl: string | null;
+    latitude: number;
+    longitude: number;
+    score: number;
+  }>;
+};
+
 @Injectable()
 export class LostPetsService {
+  private readonly logger = new Logger(LostPetsService.name);
+
   constructor(
     @InjectRepository(LostPetEntity)
     private readonly lostPetsRepository: EntityRepository<LostPetEntity>,
     private readonly em: EntityManager,
   ) {}
 
-  async create(pet: LostPetDTO) {
+  private normalizePet(pet: NormalizablePet): PetResponse {
+    return {
+      id: pet.id,
+      name: pet.name ?? 'Unknown pet',
+      type: pet.type ?? 'other',
+      email: pet.email ?? '',
+      phone: pet.phone ?? null,
+      description: pet.description ?? null,
+      city: pet.city ?? null,
+      rawLocation: pet.rawLocation ?? null,
+      latitude: Number(pet.latitude),
+      longitude: Number(pet.longitude),
+      imageUrls: pet.imageUrls ?? [],
+      embeddingInfo: pet.embedding
+        ? {
+            model: pet.embeddingModel ?? 'unknown',
+            fallbackUsed: pet.embeddingFallbackUsed ?? false,
+            warning: pet.embeddingWarning ?? null,
+          }
+        : null,
+      createdAt: pet.createdAt,
+      updatedAt: pet.updatedAt ?? pet.createdAt,
+    };
+  }
+
+  private buildMatchResponse(
+    mode: 'mock' | 'real',
+    matches: MatchResponse['matches'],
+    queryEmbedding: MatchResponse['queryEmbedding'] = null,
+  ): MatchResponse {
+    return {
+      mode,
+      queryEmbedding,
+      matches,
+    };
+  }
+
+  private isMockMode() {
+    return process.env.USE_MOCK_DATA === 'true';
+  }
+
+  private getMockPets(): PetResponse[] {
+    const mockPets: NormalizablePet[] = [
+      {
+        id: 9001,
+        name: 'Mimi',
+        type: 'cat',
+        email: 'owner+mimi@example.com',
+        phone: '0711111111',
+        description: 'Pisica gri, prietenoasa, vazuta ultima data langa parc.',
+        city: 'Bucuresti',
+        rawLocation: 'Piata Romana',
+        latitude: 44.4479,
+        longitude: 26.0979,
+        imageUrls: [],
+        embedding: null,
+        embeddingModel: null,
+        embeddingFallbackUsed: null,
+        embeddingWarning: null,
+        createdAt: new Date('2026-06-08T10:00:00.000Z'),
+        updatedAt: new Date('2026-06-08T10:00:00.000Z'),
+      },
+      {
+        id: 9002,
+        name: 'Rex',
+        type: 'dog',
+        email: 'owner+rex@example.com',
+        phone: '0722222222',
+        description: 'Caine maro, energic, cu zgarda neagra.',
+        city: 'Cluj',
+        rawLocation: 'Parcul Central',
+        latitude: 46.7704,
+        longitude: 23.5899,
+        imageUrls: [],
+        embedding: null,
+        embeddingModel: null,
+        embeddingFallbackUsed: null,
+        embeddingWarning: null,
+        createdAt: new Date('2026-06-07T14:30:00.000Z'),
+        updatedAt: new Date('2026-06-07T14:30:00.000Z'),
+      },
+      {
+        id: 9003,
+        name: 'Cleo',
+        type: 'cat',
+        email: 'owner+cleo@example.com',
+        phone: null,
+        description: 'Pisica alba cu pete portocalii.',
+        city: 'Iasi',
+        rawLocation: 'Copou',
+        latitude: 47.1739,
+        longitude: 27.5748,
+        imageUrls: [],
+        embedding: null,
+        embeddingModel: null,
+        embeddingFallbackUsed: null,
+        embeddingWarning: null,
+        createdAt: new Date('2026-06-06T09:15:00.000Z'),
+        updatedAt: new Date('2026-06-06T09:15:00.000Z'),
+      },
+    ];
+
+    return mockPets.map((pet) => this.normalizePet(pet));
+  }
+
+  private buildStoredImageUrls(photos: UploadedPhoto[]) {
+    return photos.map(
+      (photo) => `${UPLOADS_ROUTE_PREFIX}/${basename(photo.filename)}`,
+    );
+  }
+
+  private buildStoredImagePaths(photos: UploadedPhoto[]) {
+    return photos.map((photo) => photo.path);
+  }
+
+  private buildVectorLiteral(embedding: number[]) {
+    return `[${embedding.map((value) => Number(value).toFixed(6)).join(',')}]`;
+  }
+
+  private async saveEmbeddingForPet(
+    id: number,
+    embeddingResult: EmbeddingResult,
+  ) {
+    const vectorLiteral = this.buildVectorLiteral(embeddingResult.embedding);
+    await this.em.getConnection().execute(
+      `
+        update "lost_pets"
+        set
+          "embedding" = ?::vector,
+          "embedding_model" = ?,
+          "embedding_fallback_used" = ?,
+          "embedding_warning" = ?
+        where "id" = ?
+      `,
+      [
+        vectorLiteral,
+        embeddingResult.model,
+        embeddingResult.fallbackUsed,
+        embeddingResult.warning,
+        id,
+      ],
+    );
+  }
+
+  private async requestEmbedding(imagePaths: string[]) {
+    if (imagePaths.length === 0) {
+      return null;
+    }
+
+    const aiServiceUrl = process.env.AI_SERVICE_URL?.trim();
+    const configuredTimeout = Number.parseInt(
+      process.env.AI_REQUEST_TIMEOUT_MS || '180000',
+      10,
+    );
+    const timeoutMs = Number.isFinite(configuredTimeout)
+      ? configuredTimeout
+      : 180000;
+    if (!aiServiceUrl) {
+      throw new InternalServerErrorException(
+        'AI_SERVICE_URL is not configured',
+      );
+    }
+
+    try {
+      const response = await fetch(`${aiServiceUrl.replace(/\/$/, '')}/embed`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imagePaths }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      const rawBody = await response.text();
+      let data: AiEmbeddingResponse | null = null;
+
+      if (rawBody) {
+        try {
+          data = JSON.parse(rawBody) as AiEmbeddingResponse;
+        } catch {
+          if (!response.ok) {
+            throw new InternalServerErrorException(
+              `AI service returned ${response.status} ${response.statusText}`,
+            );
+          }
+          throw new InternalServerErrorException(
+            'AI service returned an invalid JSON response',
+          );
+        }
+      }
+
+      if (!response.ok || !Array.isArray(data?.embedding)) {
+        throw new InternalServerErrorException(
+          data?.detail || 'AI service failed to generate an embedding',
+        );
+      }
+
+      if (data.embedding.length !== VECTOR_DIMENSIONS) {
+        throw new InternalServerErrorException(
+          'AI embedding dimensions are invalid',
+        );
+      }
+
+      return {
+        embedding: data.embedding.map((value) => Number(value)),
+        model: data.model?.trim() || 'unknown',
+        fallbackUsed: data.fallbackUsed === true,
+        warning: data.warning?.trim() || null,
+      } satisfies EmbeddingResult;
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        `AI embedding request failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  async rebuildEmbeddings() {
+    const pets = await this.lostPetsRepository.findAll();
+    const result = {
+      total: pets.length,
+      updated: 0,
+      skipped: 0,
+      failed: [] as Array<{ id: number; reason: string }>,
+    };
+
+    for (const pet of pets) {
+      const imagePaths = (pet.imageUrls ?? [])
+        .map((imageUrl) => join(getUploadsDir(), basename(imageUrl)))
+        .filter((imagePath) => existsSync(imagePath));
+
+      if (imagePaths.length === 0) {
+        result.skipped += 1;
+        continue;
+      }
+
+      try {
+        const embeddingResult = await this.requestEmbedding(imagePaths);
+        if (!embeddingResult) {
+          result.skipped += 1;
+          continue;
+        }
+
+        await this.saveEmbeddingForPet(pet.id, embeddingResult);
+        result.updated += 1;
+      } catch (error) {
+        result.failed.push({
+          id: pet.id,
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return result;
+  }
+
+  private getMockMatches(city?: string): MatchResponse['matches'] {
+    return this.getMockPets()
+      .filter(
+        (pet) =>
+          !city?.trim() ||
+          pet.city?.toLowerCase() === city.trim().toLowerCase(),
+      )
+      .map((pet, index) => ({
+        id: pet.id,
+        name: pet.name,
+        type: pet.type,
+        city: pet.city,
+        imageUrl: pet.imageUrls[0] ?? null,
+        latitude: pet.latitude,
+        longitude: pet.longitude,
+        score: [0.042, 0.087, 0.131][index] ?? 0.2,
+      }));
+  }
+
+  private validateCreateInput(pet: LostPetDTO) {
+    if (!pet.name?.trim()) {
+      throw new BadRequestException('Name is required');
+    }
+    if (!pet.email?.trim()) {
+      throw new BadRequestException('Email is required');
+    }
+    if (!pet.type) {
+      throw new BadRequestException('Type is required');
+    }
+    if (!Number.isFinite(Number(pet.latitude))) {
+      throw new BadRequestException('Latitude must be a valid number');
+    }
+    if (!Number.isFinite(Number(pet.longitude))) {
+      throw new BadRequestException('Longitude must be a valid number');
+    }
+  }
+
+  async create(pet: LostPetDTO, photos: UploadedPhoto[] = []) {
+    this.validateCreateInput(pet);
+
+    const uploadedImageUrls = this.buildStoredImageUrls(photos);
+
     const createdPet = this.lostPetsRepository.create({
-      name: pet.name,
-      latitude: pet.latitude,
-      longitude: pet.longitude,
+      name: pet.name.trim(),
+      latitude: Number(pet.latitude),
+      longitude: Number(pet.longitude),
       type: pet.type,
-      email: '',
+      email: pet.email.trim(),
+      phone: pet.phone?.trim() || undefined,
+      description: pet.description?.trim() || undefined,
+      city: pet.city?.trim() || undefined,
+      rawLocation: pet.rawLocation?.trim() || undefined,
+      imageUrls: uploadedImageUrls,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
     await this.em.persistAndFlush(createdPet);
-    return createdPet;
+
+    if (photos.length > 0) {
+      try {
+        const embeddingResult = await this.requestEmbedding(
+          this.buildStoredImagePaths(photos),
+        );
+        if (embeddingResult) {
+          await this.saveEmbeddingForPet(createdPet.id, embeddingResult);
+          createdPet.embedding = this.buildVectorLiteral(
+            embeddingResult.embedding,
+          );
+          createdPet.embeddingModel = embeddingResult.model;
+          createdPet.embeddingFallbackUsed = embeddingResult.fallbackUsed;
+          createdPet.embeddingWarning = embeddingResult.warning ?? undefined;
+        }
+      } catch (error) {
+        this.logger.error(
+          `Pet ${createdPet.id} was saved, but its embedding could not be generated`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
+
+    return this.normalizePet(createdPet);
   }
   async getClusters(
     bboxString: string,
@@ -48,7 +461,7 @@ export class LostPetsService {
 
     try {
       const [minLng, minLat, maxLng, maxLat] = bbox;
-      if (MOCK_DATA) {
+      if (this.isMockMode()) {
         return getMockClusters([minLng, minLat, maxLng, maxLat], zoom);
       }
       const pets = await this.lostPetsRepository.find(
@@ -157,7 +570,112 @@ export class LostPetsService {
 
     return this.getClusters(bbox.join(','), String(zoom));
   }
-  async findAll(): Promise<LostPetEntity[]> {
-    return await this.lostPetsRepository.findAll();
+
+  async findAll() {
+    if (this.isMockMode()) {
+      return this.getMockPets();
+    }
+
+    const pets = await this.lostPetsRepository.findAll({
+      orderBy: { createdAt: 'desc' },
+    });
+    return pets.map((pet) => this.normalizePet(pet));
+  }
+
+  async findOne(id: number) {
+    if (this.isMockMode()) {
+      return this.getMockPets().find((pet) => pet.id === id) ?? null;
+    }
+
+    const pet = await this.lostPetsRepository.findOne({ id });
+    if (!pet) {
+      return null;
+    }
+    return this.normalizePet(pet);
+  }
+
+  async match(photos: UploadedPhoto[] = [], city?: string) {
+    if (photos.length === 0) {
+      throw new BadRequestException('At least one photo is required');
+    }
+
+    if (this.isMockMode()) {
+      return this.buildMatchResponse('mock', this.getMockMatches(city));
+    }
+
+    const embeddingResult = await this.requestEmbedding(
+      this.buildStoredImagePaths(photos),
+    );
+    if (!embeddingResult) {
+      return this.buildMatchResponse('real', []);
+    }
+
+    const vectorLiteral = this.buildVectorLiteral(embeddingResult.embedding);
+    const params: (string | number)[] = [vectorLiteral, embeddingResult.model];
+    let whereClause = 'where "embedding" is not null and "embedding_model" = ?';
+
+    if (city?.trim()) {
+      whereClause += ' and lower("city") = lower(?)';
+      params.push(city.trim());
+    }
+
+    params.push(vectorLiteral);
+
+    let rows: Array<{
+      id: number;
+      name: string;
+      type: string;
+      city: string | null;
+      imageUrls: string[] | null;
+      latitude: string | number;
+      longitude: string | number;
+      score: string | number;
+    }>;
+
+    try {
+      rows = (await this.em.getConnection().execute(
+        `
+          select
+            "id",
+            "name",
+            "type",
+            "city",
+            "image_urls" as "imageUrls",
+            "latitude",
+            "longitude",
+            "embedding" <=> ?::vector as "score"
+          from "lost_pets"
+          ${whereClause}
+          order by "embedding" <=> ?::vector asc
+          limit 10
+        `,
+        params,
+      )) as typeof rows;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Match query failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
+    return this.buildMatchResponse(
+      'real',
+      rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        type: row.type,
+        city: row.city,
+        imageUrl: row.imageUrls?.[0] ?? null,
+        latitude: Number(row.latitude),
+        longitude: Number(row.longitude),
+        score: Number(row.score),
+      })),
+      {
+        model: embeddingResult.model,
+        fallbackUsed: embeddingResult.fallbackUsed,
+        warning: embeddingResult.warning,
+      },
+    );
   }
 }

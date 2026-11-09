@@ -6,5 +6,7 @@ export class LostPetDTO {
   longitude!: number;
   description?: string;
   phone?: string;
+  city?: string;
+  rawLocation?: string;
   imageUrls?: string[];
 }
