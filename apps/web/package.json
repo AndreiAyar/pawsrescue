@@ -16,8 +16,8 @@
     "@maptiler/geocoding-control": "^2.1.7",
     "@maptiler/sdk": "^3.8.0",
     "maplibre-gl": "^6.17.0",
-    "next": "^16.1.5",
-    "next-intl": "^4.7.0",
+    "next": "^16.4.6",
+    "next-intl": "^4.14.10",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "supercluster": "^8.0.1"
@@ -28,8 +28,8 @@
     "@repo/typescript-config": "*",
     "@repo/ui": "^0.0.0",
     "@types/node": "^22.15.3",
-    "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "eslint": "^9.34.0",
     "typescript": "5.9.2"
   },
