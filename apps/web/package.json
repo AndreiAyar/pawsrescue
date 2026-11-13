@@ -27,7 +27,7 @@
     "@repo/tailwind-config": "^0.0.0",
     "@repo/typescript-config": "*",
     "@repo/ui": "^0.0.0",
-    "@types/node": "^22.15.3",
+    "@types/node": "^26.6.6",
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.1",
     "eslint": "^9.34.0",
