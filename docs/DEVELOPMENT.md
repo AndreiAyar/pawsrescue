@@ -1,7 +1,8 @@
 # Local development
 
 1. Install Node.js 22.12+ and Python 3.11–3.13.
-2. Run `npm ci`, then `npm run --workspace ai setup`. To choose a Python
+2. Run `npm ci` and `npm run setup:env` (existing env files are preserved),
+   then `npm run --workspace ai setup`. To choose a Python
    interpreter explicitly, use `PYTHON_BIN=python3.11 npm run --workspace ai setup`.
 3. Start Redis and PostgreSQL with pgvector installed. With Docker installed and
    running, use `docker compose up -d --wait db redis`. If your Postgres database
@@ -10,13 +11,12 @@
    Enable the extension in your development database
    with `CREATE EXTENSION IF NOT EXISTS vector;` if your database role cannot
    create extensions itself.
-4. Copy `apps/api/.env.example` to `apps/api/.env.development.local` and configure
-   your database connection. The API applies migrations at startup, including the baseline for an empty
+4. Configure your database connection in `apps/api/.env.development.local`,
+   created by `setup:env`. The API applies migrations at startup, including the baseline for an empty
    database. Do not run `schema:create` before these migrations.
-5. Copy `apps/web/.env.example` to `apps/web/.env.local` and set
+5. In `apps/web/.env.local`, set
    `NEXT_PUBLIC_MAPTILER_API_KEY` to your own MapTiler browser key. Restrict it to
-   your allowed origins in MapTiler. For AI model settings, copy
-   `apps/ai/.env.example` to `apps/ai/.env.local`.
+   your allowed origins in MapTiler. AI model settings are in `apps/ai/.env.local`.
 6. With Docker running, use `npm run dev:local` from the repository root. This
    starts Redis first and then the apps through Turbo. If you started Redis
    natively instead, use `npm run dev`.
@@ -47,6 +47,14 @@ Names, locations, photo references, and example.com contacts are recorded in
 If the model changes, run `npm run --workspace api embeddings:rebuild` with the AI
 service running before demonstrating scans. This updates all available image
 embeddings, so back up the database first.
+
+## Supported development environments
+
+Use Node.js 22 (22.12+) and Python 3.11 for the tested baseline. Linux and macOS
+are the primary native environments. On Windows use WSL2 or Docker Desktop;
+the shell-based Python launchers do not target Windows Command Prompt.
+The container workflow avoids host Python differences. Map rendering needs your
+own MapTiler key; a missing key is not a fully configured map demo.
 
 ## Commands
 
@@ -220,28 +228,35 @@ Use `AI_WORKER_ENABLED=false` only when running an HTTP-only AI service.
 
 ### Integration test
 
-Install `apps/ai/requirements-worker.txt` into `apps/ai/.venv` (the full AI setup
-already includes it), then run with Redis and a pgvector database available:
+The recommended command creates disposable local Postgres/pgvector and Redis
+containers, uses random localhost ports, and removes only those containers:
 
 ```sh
-npm run --workspace api test:queue
+npm run test:queue:local
 ```
 
-The suite creates a random `queue_test_*` schema and Redis prefix, launches real
-Nest and Python processes, and removes only its own data. Inference is controlled
-to test concurrency, idempotent redelivery, retries and producer recovery.
-It kills Nest with SIGKILL while Python is processing and checks Postgres and
-Redis directly, without restarting Nest first.
-
-With the full ML dependencies and local demo photo installed, also run:
+Install the full AI environment first, or install only worker dependencies for
+this suite (no model download needed):
 
 ```sh
-QUEUE_TEST_REAL_AI=true npm run --workspace api test:queue
+python3 -m venv apps/ai/.venv
+apps/ai/.venv/bin/python -m pip install -r apps/ai/requirements-worker.txt
 ```
 
-That additional test computes an actual cat embedding and saves it with Nest
-stopped. `QUEUE_TEST_PYTHON` can select a different Python executable, and
-`QUEUE_TEST_REDIS_PORT` can select a separate Redis instance.
+The suite launches real Nest and Python processes and checks concurrency,
+idempotent redelivery, retries, and producer recovery. It kills Nest with
+SIGKILL while Python is processing, then checks Postgres and Redis directly.
+For inference with an actual cat photo, install the full AI requirements and use:
+
+```sh
+QUEUE_TEST_REAL_AI=true npm run test:queue:local
+```
+
+`npm run --workspace api test:queue` is the lower-level command used by CI.
+It uses the configured database and a temporary `queue_test_*` schema; only run
+it against a dedicated development/test database. Local environment files may
+otherwise point it at a hosted database. `QUEUE_TEST_PYTHON` selects the Python
+executable; `DOCKER_BIN` selects the Docker CLI for the disposable runner.
 
 Migrations disable automatic schema snapshots to avoid including Supabase's
 managed schemas. `embeddings:rebuild` remains an explicit maintenance command;

@@ -56,6 +56,5 @@ The photos do not depict actual missing animals associated with those reports.
 
 At the owner’s request, the editable Remotion project, its dependencies, and
 full-size MP4 exports are kept outside this repository and delivered separately.
-Only the final README assets belong here. Nothing was deployed, published,
-committed, or pushed as part of making them. No project license was added;
-that decision remains with the owner.
+Only the final README assets belong here. Project code is [MIT licensed](../../LICENSE);
+photos and fonts retain the terms listed in [third-party notices](../../THIRD_PARTY_NOTICES.md).

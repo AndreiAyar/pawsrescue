@@ -9,5 +9,6 @@
     "start": "sh ./scripts/run-uvicorn.sh",
     "check": "sh ./scripts/run-python.sh -m py_compile main.py worker.py worker_db.py",
     "test": "sh ./scripts/run-python.sh -m unittest -v test_main test_worker"
-  }
+  },
+  "license": "MIT"
 }

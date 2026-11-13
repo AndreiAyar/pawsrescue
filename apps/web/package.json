@@ -15,7 +15,6 @@
   "dependencies": {
     "@maptiler/geocoding-control": "^2.1.7",
     "@maptiler/sdk": "^3.8.0",
-    "mapbox-gl": "^3.14.0",
     "maplibre-gl": "^6.17.0",
     "next": "^16.1.5",
     "next-intl": "^4.7.0",
@@ -33,5 +32,6 @@
     "@types/react-dom": "19.1.1",
     "eslint": "^9.34.0",
     "typescript": "5.9.2"
-  }
+  },
+  "license": "MIT"
 }

@@ -185,6 +185,11 @@ describe('Nest producer → Python worker', () => {
       },
       migrations: { ...dbConfig.migrations, snapshot: false },
     });
+    // Shared extension types must outlive the disposable test schema. On a
+    // fresh database migrations would otherwise install vector inside it.
+    await orm.em
+      .getConnection()
+      .execute('create extension if not exists vector with schema public');
     await orm.em.getConnection().execute(`create schema "${schema}"`);
     await orm.getMigrator().up();
     await orm.getMigrator().up();

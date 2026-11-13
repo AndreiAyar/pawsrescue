@@ -17,7 +17,9 @@
     "docker:prod:config": "docker compose --env-file .env.production.local -f docker-compose.prod.yml config",
     "docker:prod:up": "docker compose --env-file .env.production.local -f docker-compose.prod.yml up -d --build",
     "docker:prod:down": "docker compose --env-file .env.production.local -f docker-compose.prod.yml down",
-    "test:map-cache": "node --test scripts/map-cache.test.mjs"
+    "test:map-cache": "node --test scripts/map-cache.test.mjs",
+    "setup:env": "node scripts/setup-env.mjs",
+    "test:queue:local": "node scripts/test-queue-local.mjs"
   },
   "devDependencies": {
     "@mikro-orm/cli": "^6.5.2",
@@ -39,5 +41,6 @@
   },
   "overrides": {
     "maplibre-gl": "^6.17.0"
-  }
+  },
+  "license": "MIT"
 }

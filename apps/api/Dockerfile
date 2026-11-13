@@ -17,6 +17,8 @@ ENV PORT=3015
 
 WORKDIR /app/apps/api
 
+COPY LICENSE THIRD_PARTY_NOTICES.md /app/
+COPY docs/licenses /app/docs/licenses
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/package.json ./package.json

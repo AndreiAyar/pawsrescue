@@ -72,8 +72,8 @@ There’s plenty left: search filters, editing reports, email verification, and
 marking animals as found. Help with design, translations, and testing would
 be useful too.
 
-[Open an issue](https://github.com/AndreiAyar/pawsrescue/issues) if you want to
-help or have found something that needs fixing.
+[Read the contribution guide](CONTRIBUTING.md) to get started, or
+[open an issue](https://github.com/AndreiAyar/pawsrescue/issues) with a bug or idea.
 
 ### Development
 
@@ -88,7 +88,8 @@ retries skip reports whose embedding is already saved.
 
 #### Start locally
 
-After the [first-time setup](docs/DEVELOPMENT.md#local-development), start Redis
+First clone? Run `npm ci` and `npm run setup:env`, then follow the
+[first-time setup](docs/DEVELOPMENT.md#local-development). Start Redis
 with Docker Compose and run the applications on your machine:
 
 ```sh
@@ -126,6 +127,7 @@ run Redis natively. To run the whole stack in containers instead, configure the
 root `.env` from `.env.example` and run `npm run docker:up`.
 
 [Local setup and commands](docs/DEVELOPMENT.md) ·
-[Deployment](DEPLOY_DIGITALOCEAN.md)
+[Deployment](DEPLOY_DIGITALOCEAN.md) · [Security](SECURITY.md) ·
+[Third-party notices](THIRD_PARTY_NOTICES.md)
 
-<sub>License: not selected yet.</sub>
+<sub>MIT licensed. Use it, improve it, or build your own version. See [LICENSE](LICENSE).</sub>
